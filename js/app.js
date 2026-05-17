@@ -1007,14 +1007,99 @@
     // 已装备映射
     const equippedItems = {
         weapon: 'ironSword',
-        armor: null,     // 用 armoredCoat 但保留简单的
-        ring: null,      // 用 jadePendant
+        armor: null,
+        ring: null,
         helm: null,
         belt: null,
         bracer: null,
         boots: null,
         treasure: null
     };
+
+    // 物品数量追踪
+    const inventoryQuantities = {
+        ironSword: 1,
+        cloudBoots: 1,
+        jadeBelt: 1,
+        healPill: 8,
+        foundationPill: 1,
+        qiPill: 5,
+        spiritHerb: 15,
+        beastCore: 2,
+        ironOre: 7,
+        jadeSlip: 3,
+        spiritStone: 245,
+        formationFlag: 4
+    };
+
+    function getItemQtyEl(itemKey) {
+        return document.querySelector(`#inventoryGrid .inv-item[data-item="${itemKey}"] .item-qty`);
+    }
+
+    function updateItemQtyDisplay(itemKey) {
+        const qtyEl = getItemQtyEl(itemKey);
+        const qty = inventoryQuantities[itemKey] || 0;
+        if (qtyEl) {
+            qtyEl.textContent = qty > 1 ? `x${qty}` : '';
+            if (qty <= 0) qtyEl.textContent = '';
+        }
+    }
+
+    function decreaseItemQuantity(itemKey) {
+        if (!(itemKey in inventoryQuantities)) return;
+        inventoryQuantities[itemKey] = Math.max(0, inventoryQuantities[itemKey] - 1);
+        updateItemQtyDisplay(itemKey);
+
+        if (inventoryQuantities[itemKey] <= 0) {
+            // 从物品栏移除
+            const itemEl = document.querySelector(`#inventoryGrid .inv-item[data-item="${itemKey}"]`);
+            if (itemEl) {
+                itemEl.style.animation = 'notifSlideOut 250ms var(--ease-out-expo) forwards';
+                itemEl.addEventListener('animationend', () => itemEl.remove(), { once: true });
+            }
+            // 如果当前选中的是这个物品，清除详情面板
+            if (selectedItemKey === itemKey) {
+                selectedItemKey = null;
+                DOM_detailPlaceholder.style.display = '';
+                DOM_detailContent.style.display = 'none';
+            }
+        }
+    }
+
+    function increaseItemQuantity(itemKey) {
+        if (!(itemKey in inventoryQuantities)) {
+            inventoryQuantities[itemKey] = 1;
+        } else {
+            inventoryQuantities[itemKey]++;
+        }
+        updateItemQtyDisplay(itemKey);
+
+        // 如果物品不在网格中（之前被移除到0了），需要重建
+        const existing = document.querySelector(`#inventoryGrid .inv-item[data-item="${itemKey}"]`);
+        if (!existing && inventoryQuantities[itemKey] > 0) {
+            recreateItemElement(itemKey);
+        }
+    }
+
+    function recreateItemElement(itemKey) {
+        const data = itemDataMap[itemKey];
+        if (!data) return;
+
+        const div = document.createElement('div');
+        div.className = 'inv-item';
+        div.dataset.item = itemKey;
+        div.dataset.category = data.category;
+        div.style.animation = 'fadeSlideIn 300ms var(--ease-out-expo)';
+        div.innerHTML = `
+            <div class="item-icon${data.category === 'consumable' ? ' pill' : ''}${data.grade?.includes('稀有') ? ' epic' : ''}${data.category === 'equipment' ? ' weapon-icon' : ''}">
+                ${data.icon}
+            </div>
+            <span class="item-name">${data.name}</span>
+            ${data.category === 'equipment' ? `<span class="item-grade-tag">${data.grade}</span>` : ''}
+            <span class="item-qty">${inventoryQuantities[itemKey] > 1 ? 'x' + inventoryQuantities[itemKey] : ''}</span>
+        `;
+        DOM_invGrid.appendChild(div);
+    }
 
     // 纸娃娃槽位初始化（标记已装备的）
     function initPaperdollSlots() {
@@ -1104,7 +1189,7 @@
         else if (data.category === 'equipment') DOM_detailIcon.classList.add('equipment-color');
 
         DOM_detailName.textContent = data.name;
-        DOM_detailGrade.textContent = data.grade;
+        DOM_detailGrade.textContent = `${data.grade} · 剩余 ${inventoryQuantities[itemKey] || 0} 个`;
         DOM_detailDesc.textContent = data.desc
             ? `${data.desc}${data.stats ? ' — ' + data.stats.join(' · ') : ''}`
             : (data.stats ? data.stats.join(' · ') : '');
@@ -1130,20 +1215,29 @@
         if (!slotEl) return;
 
         if (equippedItems[data.slot] === selectedItemKey) {
-            // 卸下
+            // 卸下 — 物品返回物品栏
+            const oldKey = equippedItems[data.slot];
             equippedItems[data.slot] = null;
             slotEl.classList.remove('equipped');
             const nameEl = slotEl.querySelector('.pd-slot-name');
             if (nameEl) { nameEl.textContent = '空'; nameEl.classList.add('empty-slot'); }
             DOM_btnEquipItem.textContent = '装备';
-            NotificationSystem.info('已卸下', `${data.name} 已从装备栏卸下。`);
+            if (oldKey) increaseItemQuantity(oldKey);
+            NotificationSystem.info('已卸下', `${data.name} 已放回储物袋。`);
         } else {
-            // 装备
+            // 若该槽位已有装备，先卸下旧装备
+            const oldKey = equippedItems[data.slot];
+            if (oldKey) {
+                equippedItems[data.slot] = null;
+                increaseItemQuantity(oldKey);
+            }
+            // 装备新物品 — 从物品栏扣除
             equippedItems[data.slot] = selectedItemKey;
             slotEl.classList.add('equipped');
             const nameEl = slotEl.querySelector('.pd-slot-name');
             if (nameEl) { nameEl.textContent = data.name; nameEl.classList.remove('empty-slot'); }
             DOM_btnEquipItem.textContent = '卸下';
+            decreaseItemQuantity(selectedItemKey);
             NotificationSystem.success('装备成功', `已装备 ${data.name} 到${slotEl.querySelector('.pd-slot-label')?.textContent || '装备栏'}。`);
         }
     });
@@ -1154,23 +1248,35 @@
         const data = itemDataMap[selectedItemKey];
         if (!data || data.category !== 'consumable') return;
 
+        if (inventoryQuantities[selectedItemKey] <= 0) {
+            NotificationSystem.warning('数量不足', `${data.name} 已经用完了。`);
+            return;
+        }
+
         const p = GameState.player;
+        let used = false;
         if (selectedItemKey === 'healPill') {
             p.hp = Math.min(p.maxHp, p.hp + 200);
             p.qi = Math.min(p.maxQi, p.qi + 100);
             updateCultivationUI();
             NotificationSystem.success('使用回灵丹', '生命 +200，灵力 +100');
+            used = true;
         } else if (selectedItemKey === 'foundationPill') {
             NotificationSystem.info('筑基丹', '此丹药应在突破时使用，当前使用无效。');
         } else if (selectedItemKey === 'qiPill') {
             p.cultivationRate += 6;
             updateCultivationUI();
             NotificationSystem.success('使用聚灵丹', '修炼效率 +50%，持续2回合！');
+            used = true;
             setTimeout(() => {
                 p.cultivationRate -= 6;
                 updateCultivationUI();
                 NotificationSystem.info('聚灵丹失效', '修炼效率恢复至正常水平。');
             }, 60000);
+        }
+
+        if (used) {
+            decreaseItemQuantity(selectedItemKey);
         }
     });
 
@@ -1178,17 +1284,14 @@
     DOM_btnDropItem.addEventListener('click', () => {
         if (!selectedItemKey) return;
         const data = itemDataMap[selectedItemKey];
-        ModalManager.showConfirm('丢弃物品', `确认丢弃 <span style="color:var(--gold-light)">${data.name}</span> 吗？此操作不可撤销。`, () => {
-            const itemEl = DOM_invGrid.querySelector(`[data-item="${selectedItemKey}"]`);
-            if (itemEl) {
-                itemEl.style.animation = 'notifSlideOut 300ms var(--ease-out-expo) forwards';
-                itemEl.addEventListener('animationend', () => itemEl.remove(), { once: true });
-            }
-            // Reset detail panel
-            DOM_detailPlaceholder.style.display = '';
-            DOM_detailContent.style.display = 'none';
-            selectedItemKey = null;
-            NotificationSystem.info('已丢弃', `${data.name} 已从储物袋中移除。`);
+        const currentQty = inventoryQuantities[selectedItemKey] || 0;
+        if (currentQty <= 0) {
+            NotificationSystem.warning('数量不足', '此物品已经没有了。');
+            return;
+        }
+        ModalManager.showConfirm('丢弃物品', `确认丢弃 1 个 <span style="color:var(--gold-light)">${data.name}</span> 吗？（剩余 ${currentQty} 个）`, () => {
+            decreaseItemQuantity(selectedItemKey);
+            NotificationSystem.info('已丢弃', `${data.name} -1（剩余 ${inventoryQuantities[selectedItemKey] || 0} 个）`);
         });
     });
 
