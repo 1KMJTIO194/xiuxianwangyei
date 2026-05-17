@@ -162,18 +162,37 @@
                         </div>
                         <aside class="cult-sidebar">
                             <div class="side-card">
-                                <h3>当前状态</h3>
+                                <h3>灵力三维</h3>
                                 <div class="side-stat">
-                                    <span>灵力值</span>
-                                    <div class="mini-bar"><div class="mini-fill" style="width:65%" id="miniQi"></div></div>
+                                    <span>强度 SPI</span>
+                                    <span class="stat-num" id="sidebarSPI">3</span>
                                 </div>
                                 <div class="side-stat">
-                                    <span>神识</span>
-                                    <div class="mini-bar"><div class="mini-fill spirit" style="width:48%" id="miniSpirit"></div></div>
+                                    <span>掌控 SPC</span>
+                                    <span class="stat-num" id="sidebarSPC">3</span>
                                 </div>
                                 <div class="side-stat">
-                                    <span>肉身</span>
-                                    <div class="mini-bar"><div class="mini-fill body" style="width:55%" id="miniBody"></div></div>
+                                    <span>储量 SPCap</span>
+                                    <span class="stat-num" id="sidebarSPCap">35</span>
+                                </div>
+                                <div class="side-stat">
+                                    <span>灵力</span>
+                                    <div class="mini-bar"><div class="mini-fill" style="width:80%" id="miniQi"></div></div>
+                                </div>
+                            </div>
+                            <div class="side-card">
+                                <h3>灵魂与肉体</h3>
+                                <div class="side-stat">
+                                    <span>灵魂 SS</span>
+                                    <span class="stat-num spirit-color" id="sidebarSS">8</span>
+                                </div>
+                                <div class="side-stat">
+                                    <span>肉体 BS</span>
+                                    <span class="stat-num body-color" id="sidebarBS">12</span>
+                                </div>
+                                <div class="side-stat">
+                                    <span>战斗力</span>
+                                    <span class="stat-num gold-color" id="sidebarCP">0</span>
                                 </div>
                             </div>
                             <div class="side-card">
@@ -392,12 +411,18 @@
                             <!-- 属性面板 -->
                             <div class="abode-stats" id="abodeStats">
                                 <h3 class="stats-title">角色属性</h3>
-                                <div class="stat-row"><span class="s-label">生命值</span><span class="s-val" id="statHp">500</span><div class="s-bar"><div class="s-fill hp-fill-stat" style="width:100%"></div></div></div>
-                                <div class="stat-row"><span class="s-label">灵力值</span><span class="s-val" id="statQi">380</span><div class="s-bar"><div class="s-fill qi-fill-stat" style="width:76%"></div></div></div>
-                                <div class="stat-row"><span class="s-label">攻击力</span><span class="s-val accent-atk" id="statAtk">45</span></div>
-                                <div class="stat-row"><span class="s-label">防御力</span><span class="s-val accent-def" id="statDef">30</span></div>
-                                <div class="stat-row"><span class="s-label">神识</span><span class="s-val accent-spi" id="statSpirit">48</span></div>
-                                <div class="stat-row"><span class="s-label">肉身</span><span class="s-val accent-bod" id="statBody">55</span></div>
+                                <div class="stat-row"><span class="s-label">修炼路径</span><span class="s-val accent-atk" id="statPath">灵修</span></div>
+                                <div class="stat-row"><span class="s-label">寿元</span><span class="s-val accent-spi" id="statLifespan">150年</span></div>
+                                <div class="stat-row"><span class="s-label">生命值</span><span class="s-val" id="statHp">200</span><div class="s-bar"><div class="s-fill hp-fill-stat" id="hpBarStat" style="width:100%"></div></div></div>
+                                <div class="stat-row"><span class="s-label">灵力值</span><span class="s-val" id="statQi">28/35</span><div class="s-bar"><div class="s-fill qi-fill-stat" id="qiBarStat" style="width:80%"></div></div></div>
+                                <div class="stat-row"><span class="s-label">强度 SPI</span><span class="s-val gold-color" id="statSPI">3</span></div>
+                                <div class="stat-row"><span class="s-label">掌控 SPC</span><span class="s-val gold-color" id="statSPC">3</span></div>
+                                <div class="stat-row"><span class="s-label">储量 SPCap</span><span class="s-val gold-color" id="statSPCap">35</span></div>
+                                <div class="stat-row"><span class="s-label">灵魂 SS</span><span class="s-val spirit-color" id="statSS">8</span></div>
+                                <div class="stat-row"><span class="s-label">肉体 BS</span><span class="s-val body-color" id="statBS">12</span></div>
+                                <div class="stat-row"><span class="s-label">攻击力</span><span class="s-val accent-atk" id="statAtk">15</span></div>
+                                <div class="stat-row"><span class="s-label">防御力</span><span class="s-val accent-def" id="statDef">10</span></div>
+                                <div class="stat-row"><span class="s-label">战斗力</span><span class="s-val gold-color" id="statCombatPower">0</span></div>
                             </div>
                         </div>
 
@@ -641,7 +666,7 @@
                                 </div>
                                 <div class="mkt-item-info">
                                     <h4>回灵丹</h4>
-                                    <span class="mkt-grade">一品丹药</span>
+                                    <span class="mkt-grade">黄阶中品</span>
                                     <p>恢复灵力300点</p>
                                     <div class="mkt-price">
                                         <svg viewBox="0 0 16 16" fill="none"><polygon points="8,2 12,6 8,10 4,6" stroke="currentColor" stroke-width="1"/></polygon></svg>
@@ -656,7 +681,7 @@
                                 </div>
                                 <div class="mkt-item-info">
                                     <h4>筑基丹</h4>
-                                    <span class="mkt-grade">三品丹药</span>
+                                    <span class="mkt-grade">玄阶下品</span>
                                     <p>大幅提升突破至筑基期的成功率</p>
                                     <div class="mkt-price">
                                         <svg viewBox="0 0 16 16" fill="none"><polygon points="8,2 12,6 8,10 4,6" stroke="currentColor" stroke-width="1"/></polygon></svg>
@@ -671,7 +696,7 @@
                                 </div>
                                 <div class="mkt-item-info">
                                     <h4>寒冰剑</h4>
-                                    <span class="mkt-grade">中品法器</span>
+                                    <span class="mkt-grade">黄阶上品</span>
                                     <p>附带寒冰伤害，攻击力+45</p>
                                     <div class="mkt-price">
                                         <svg viewBox="0 0 16 16" fill="none"><polygon points="8,2 12,6 8,10 4,6" stroke="currentColor" stroke-width="1"/></polygon></svg>

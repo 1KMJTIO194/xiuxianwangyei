@@ -1419,6 +1419,21 @@ body {
 .s-val.accent-def { color: var(--spirit); }
 .s-val.accent-spi { color: #c090e0; }
 .s-val.accent-bod { color: var(--jade); }
+.s-val.gold-color { color: var(--gold-light); font-family: var(--font-heading); }
+.s-val.spirit-color { color: #c090e0; font-family: var(--font-heading); }
+.s-val.body-color { color: var(--jade); font-family: var(--font-heading); }
+
+/* 修炼侧边栏数值标签 */
+.stat-num {
+    font-family: var(--font-heading);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gold-light);
+}
+
+.stat-num.spirit-color { color: #c090e0; }
+.stat-num.body-color { color: var(--jade); }
+.stat-num.gold-color { color: var(--gold-light); }
 
 .s-bar {
     flex: 1;

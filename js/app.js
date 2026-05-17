@@ -6,62 +6,122 @@
     'use strict';
 
     /* ================================
-       游戏状态
+       游戏状态 — 完整修炼数值体系
        ================================ */
     const GameState = {
+        // 修炼路径: 'spirit'=灵修, 'soul'=魂修, 'body'=体修
+        cultivationPath: 'spirit',
+
         player: {
             name: '无名修士',
             realm: '炼气期',
             realmTier: 3,
             realmIndex: 0,
-            hp: 500,
-            maxHp: 500,
-            qi: 380,
-            maxQi: 500,
-            spirit: 48,
-            body: 55,
-            attack: 45,
-            defense: 30,
+            lifespan: 150,
+
+            // === 核心灵力三维 ===
+            SPI: 3,         // 灵力强度
+            SPC: 3,         // 灵力掌控
+            SPCap: 35,      // 灵力储量上限
+            currentQi: 28,  // 当前灵力
+
+            // === 灵魂与肉体 ===
+            SS: 8,          // 灵魂强度 (凡人基准=5)
+            BS: 12,         // 肉体强度 (凡人基准=5)
+
+            // === 衍生战斗属性 ===
+            hp: 200,
+            maxHp: 200,
+            attack: 15,
+            defense: 10,
+            combatPower: 0,  // 战斗力（实时计算）
+
+            // === 灵根资质 ===
+            spiritRoots: { 金: 72, 木: 45, 水: 88, 火: 60, 土: 35 },
+
+            // === 资源 ===
             spiritStones: 1280,
-            cultivationProgress: 72,
-            cultivationRate: 12.5,
-            cultivationTime: 12240,
-            isCultivating: false,
             stamina: 100,
             maxStamina: 100,
             staminaPerTurn: 10,
-            elements: { 金: 72, 木: 45, 水: 88, 火: 60, 土: 35 }
+
+            // === 修炼状态 ===
+            cultivationProgress: 72,
+            cultivationRate: 2.5,
+            cultivationTime: 12240,
+            isCultivating: false
         },
+
         enemy: {
             name: '妖兽·赤炎虎',
             realm: '练气期六层',
-            hp: 800,
-            maxHp: 800,
-            attack: 62,
-            defense: 25
+            SPI: 5, SPC: 4, SPCap: 50, SS: 6, BS: 18,
+            hp: 300, maxHp: 300,
+            attack: 22, defense: 12
         },
-        turn: 1,
-        month: 1,
-        year: 1,
+
+        turn: 1, month: 1, year: 1,
         combatActive: false,
         cultivationInterval: null,
-        settings: {
-            particles: true,
-            animations: true
-        }
+        settings: { particles: true, animations: true }
     };
 
+    // 通用境界体系（灵修）
     const REALMS = [
-        { name: '炼气期', tiers: ['一层', '二层', '三层', '四层', '五层', '六层', '七层', '八层', '九层'] },
-        { name: '筑基期', tiers: ['初期', '中期', '后期', '圆满'] },
-        { name: '金丹期', tiers: ['初期', '中期', '后期', '圆满'] },
-        { name: '元婴期', tiers: ['初期', '中期', '后期', '圆满'] },
-        { name: '化神期', tiers: ['初期', '中期', '后期', '圆满'] },
-        { name: '合体期', tiers: ['初期', '中期', '后期', '圆满'] },
-        { name: '大乘期', tiers: ['初期', '中期', '后期', '圆满'] },
-        { name: '渡劫期', tiers: ['初期', '中期', '后期', '圆满'] },
-        { name: '真仙境', tiers: ['初期', '中期', '后期', '圆满'] }
+        { name: '凡体',   tiers: ['肉身'],  lifespan: 90,  spiBase: [0, 1],     spcBase: [0, 1],     spcapBase: [0, 5] },
+        { name: '炼气期', tiers: ['一层','二层','三层','四层','五层','六层','七层','八层','九层'], lifespan: 150,  spiBase: [1, 5],   spcBase: [1, 5],   spcapBase: [1, 50] },
+        { name: '筑基期', tiers: ['初期','中期','后期','圆满'], lifespan: 200,  spiBase: [10, 50], spcBase: [10, 50], spcapBase: [100, 500] },
+        { name: '金丹期', tiers: ['初期','中期','后期','圆满'], lifespan: 500,  spiBase: [100, 500], spcBase: [100, 500], spcapBase: [1000, 5000] },
+        { name: '元婴期', tiers: ['初期','中期','后期','圆满'], lifespan: 1000, spiBase: [1000, 5000], spcBase: [1000, 5000], spcapBase: [10000, 50000] },
+        { name: '化神期', tiers: ['初期','中期','后期','圆满'], lifespan: 3000, spiBase: [10000, 50000], spcBase: [10000, 50000], spcapBase: [100000, 500000] },
+        { name: '炼虚期', tiers: ['初期','中期','后期','圆满'], lifespan: 10000, spiBase: [100000, 500000], spcBase: [100000, 500000], spcapBase: [1e6, 5e6] },
+        { name: '合体期', tiers: ['初期','中期','后期','圆满'], lifespan: 30000, spiBase: [1e6, 5e6], spcBase: [1e6, 5e6], spcapBase: [1e7, 5e7] },
+        { name: '大乘期', tiers: ['初期','中期','后期','圆满'], lifespan: Infinity, spiBase: [1e7, 5e7], spcBase: [1e7, 5e7], spcapBase: [1e8, 5e8] },
+        { name: '渡劫期', tiers: ['初期','中期','后期','圆满'], lifespan: Infinity, spiBase: [1e8, 5e8], spcBase: [1e8, 5e8], spcapBase: [1e9, 5e9] }
     ];
+
+    // 魂修境界
+    const SOUL_REALMS = ['凝魂期','铸魂期','魂丹期','魂婴期','化魂期','融虚期','合魂期','魂劫期','渡魂劫'];
+    // 体修境界
+    const BODY_REALMS = ['锻体期','易筋期','金身期','万象期','神力期','破虚期','不灭期','成圣期','渡体劫'];
+
+    // 功法增幅系数
+    const TECHNIQUE_MULTIPLIERS = {
+        '黄阶下品': [1.1, 1.1, 1.1], '黄阶中品': [1.2, 1.2, 1.3], '黄阶上品': [1.35, 1.35, 1.5], '黄阶极品': [1.5, 1.5, 2.0],
+        '玄阶下品': [1.5, 1.5, 2.0], '玄阶中品': [1.8, 1.8, 2.5], '玄阶上品': [2.1, 2.1, 3.2], '玄阶极品': [2.5, 2.5, 4.0],
+        '地阶下品': [3.0, 3.0, 4.0], '地阶中品': [3.5, 3.5, 5.0], '地阶上品': [4.2, 4.2, 6.5], '地阶极品': [5.0, 5.0, 8.0],
+        '天阶下品': [6.0, 6.0, 8.0], '天阶中品': [7.0, 7.0, 10.0], '天阶上品': [8.5, 8.5, 13.0], '天阶极品': [10.0, 10.0, 15.0],
+        '仙品':    [20.0, 20.0, 30.0]
+    };
+
+    // 装备品级操控需求
+    const EQUIP_GRADE_REQ = {
+        '黄阶下品': { ss: 10,  coeff: 10  }, '黄阶中品': { ss: 15, coeff: 15 }, '黄阶上品': { ss: 20, coeff: 20 }, '黄阶极品': { ss: 25, coeff: 25 },
+        '玄阶下品': { ss: 30,  coeff: 30  }, '玄阶中品': { ss: 40, coeff: 40 }, '玄阶上品': { ss: 50, coeff: 50 }, '玄阶极品': { ss: 60, coeff: 60 },
+        '地阶下品': { ss: 500, coeff: 500 }, '地阶中品': { ss: 700, coeff: 700 }, '地阶上品': { ss: 900, coeff: 900 }, '地阶极品': { ss: 1000, coeff: 1000 },
+        '天阶下品': { ss: 2000, coeff: 2000 }, '天阶中品': { ss: 3000, coeff: 3000 }, '天阶上品': { ss: 4000, coeff: 4000 }, '天阶极品': { ss: 5000, coeff: 5000 },
+        '仙品':     { ss: 1e6, coeff: 1e6 }
+    };
+
+    /* ================================
+       战斗力计算
+       ================================ */
+    function calcCombatPower(p) {
+        const SPI = p.SPI || 1;
+        const SPC = p.SPC || 1;
+        const SPCap = p.SPCap || 1;
+        const SS = p.SS || 5;
+        const BS = p.BS || 5;
+        // 基础战斗力 = [(SPI + SPC) × log₁₀(SPCap) + SS + BS] × K
+        const logCap = Math.log10(Math.max(1, SPCap));
+        const base = (SPI + SPC) * logCap + SS + BS;
+        const K = 1.0; // 综合修正系数（含装备/技能/状态）
+        return Math.round(base * K);
+    }
+
+    function updatePlayerCombatPower() {
+        GameState.player.combatPower = calcCombatPower(GameState.player);
+    }
 
     /* ================================
        DOM 引用缓存
@@ -441,72 +501,102 @@
     /* ================================
        修炼系统
        ================================ */
+    function getRealmStatRange() {
+        const r = REALMS[GameState.player.realmIndex] || REALMS[1];
+        return {
+            spiMax: r.spiBase[1], spcMax: r.spcBase[1], spcapMax: r.spcapBase[1],
+            ssMax: r.spiBase[1] * 2, bsMax: r.spiBase[1] * 3
+        };
+    }
+
     function updateCultivationUI() {
         const p = GameState.player;
+        const r = REALMS[p.realmIndex] || REALMS[1];
+        const tierName = r.tiers[Math.min(p.realmTier - 1, r.tiers.length - 1)] || '';
+
         DOM.realmName.textContent = p.realm;
-        DOM.realmTier.textContent = REALMS[p.realmIndex]?.tiers[p.realmTier - 1] || '';
+        DOM.realmTier.textContent = tierName;
         DOM.spiritStones.textContent = p.spiritStones.toLocaleString();
-        DOM.qiValue.textContent = p.qi;
+        DOM.qiValue.textContent = `${p.currentQi}/${p.SPCap}`;
+
+        // Cultivation progress
         DOM.cultPercent.textContent = `${p.cultivationProgress}%`;
         DOM.cultProgressBar.style.width = `${p.cultivationProgress}%`;
         DOM.cultRate.textContent = `${p.cultivationRate}/秒`;
-        DOM.cultBonus.textContent = `+${Math.round((p.elements.水 + p.elements.金) / 3)}%`;
+        const waterGold = (p.spiritRoots.水 + p.spiritRoots.金) / 3;
+        DOM.cultBonus.textContent = `+${Math.round(waterGold)}%`;
 
         const hours = Math.floor(p.cultivationTime / 3600);
         const mins = Math.floor((p.cultivationTime % 3600) / 60);
         DOM.cultTime.textContent = `${hours}时${mins}分`;
 
-        DOM.miniQi.style.width = `${(p.qi / p.maxQi) * 100}%`;
-        DOM.miniSpirit.style.width = `${p.spirit}%`;
-        DOM.miniBody.style.width = `${p.body}%`;
+        // Qi bar (currentQi / SPCap)
+        DOM.miniQi.style.width = SPCap > 0 ? `${(p.currentQi / p.SPCap) * 100}%` : '0%';
+        // SPI / SPC bars relative to realm max
+        const range = getRealmStatRange();
+        DOM.miniSpirit.style.width = `${Math.min(100, (p.SS / range.ssMax) * 100)}%`;
+        DOM.miniBody.style.width = `${Math.min(100, (p.BS / range.bsMax) * 100)}%`;
 
-        DOM.playerRealm.textContent = `${p.realm}${REALMS[p.realmIndex]?.tiers[p.realmTier - 1] || ''}`;
+        // Combat display
+        DOM.playerRealm.textContent = `${p.realm}${tierName}`;
         DOM.playerHpText.textContent = `${p.hp}/${p.maxHp}`;
         DOM.playerHpBar.style.width = `${(p.hp / p.maxHp) * 100}%`;
 
-        // Update breakthrough tab
+        // Breakthrough tab
         DOM.btCurRealm.textContent = p.realm;
-        DOM.btCurTier.textContent = REALMS[p.realmIndex]?.tiers[p.realmTier - 1] || '';
-        const nextRealmIdx = Math.min(p.realmIndex + 1, REALMS.length - 1);
-        DOM.btNextRealm.textContent = REALMS[nextRealmIdx]?.name || '真仙境';
-        DOM.btSuccessRate.textContent = `${Math.min(95, 40 + p.cultivationProgress / 2 + (p.spirit + p.body) / 5)}%`;
+        DOM.btCurTier.textContent = tierName;
+        const nextIdx = Math.min(p.realmIndex + 1, REALMS.length - 1);
+        DOM.btNextRealm.textContent = REALMS[nextIdx]?.name || '渡劫期';
+        DOM.btSuccessRate.textContent = `${Math.min(95, 40 + p.cultivationProgress / 2 + (Math.log10(p.SS + 1) + Math.log10(p.BS + 1)) * 4)}%`;
 
-        // Update stamina display
+        // Stamina
         DOM.staminaValue.textContent = p.stamina;
         const staminaRatio = p.stamina / p.maxStamina;
-        if (staminaRatio <= 0.15) {
-            DOM.staminaDisplay.classList.add('low-stamina');
-        } else {
-            DOM.staminaDisplay.classList.remove('low-stamina');
-        }
+        DOM.staminaDisplay.classList.toggle('low-stamina', staminaRatio <= 0.15);
 
-        // Update abode stats panel
+        // Sidebar stats
+        setEl('sidebarSPI', p.SPI); setEl('sidebarSPC', p.SPC); setEl('sidebarSPCap', formatLargeNum(p.SPCap));
+        setEl('sidebarSS', p.SS); setEl('sidebarBS', p.BS);
+        setEl('sidebarCP', formatLargeNum(p.combatPower));
+
+        // Combat power
+        updatePlayerCombatPower();
+
         updateAbodeStats();
     }
 
     function updateAbodeStats() {
         const p = GameState.player;
-        const statHp = document.getElementById('statHp');
-        const statQi = document.getElementById('statQi');
-        const statAtk = document.getElementById('statAtk');
-        const statDef = document.getElementById('statDef');
-        const statSpirit = document.getElementById('statSpirit');
-        const statBody = document.getElementById('statBody');
-        const invCap = document.getElementById('invCapacity');
+        setEl('statHp', p.hp); setEl('statQi', `${p.currentQi}/${p.SPCap}`);
+        setEl('statSPI', p.SPI); setEl('statSPC', p.SPC);
+        setEl('statSPCap', formatLargeNum(p.SPCap));
+        setEl('statSS', p.SS); setEl('statBS', p.BS);
+        setEl('statAtk', p.attack); setEl('statDef', p.defense);
+        setEl('statCombatPower', formatLargeNum(p.combatPower));
+        setEl('statLifespan', p.lifespan === Infinity ? '无尽' : p.lifespan);
+        setEl('statPath', pathLabel());
+        setEl('invCapacity', '16/24');
 
-        if (statHp) statHp.textContent = p.hp;
-        if (statQi) statQi.textContent = p.qi;
-        if (statAtk) statAtk.textContent = p.attack;
-        if (statDef) statDef.textContent = p.defense;
-        if (statSpirit) statSpirit.textContent = Math.round(p.spirit);
-        if (statBody) statBody.textContent = Math.round(p.body);
-        if (invCap) invCap.textContent = '16/24';
+        setBar('hpBarStat', p.hp / p.maxHp);
+        setBar('qiBarStat', p.currentQi / p.SPCap);
+    }
 
-        // Update stat bars in abode
-        const hpBar = document.querySelector('.s-fill.hp-fill-stat');
-        const qiBar = document.querySelector('.s-fill.qi-fill-stat');
-        if (hpBar) hpBar.style.width = `${(p.hp / p.maxHp) * 100}%`;
-        if (qiBar) qiBar.style.width = `${(p.qi / p.maxQi) * 100}%`;
+    function setEl(id, val) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    }
+    function setBar(id, ratio) {
+        const bar = document.getElementById(id);
+        if (bar) bar.style.width = `${Math.min(100, ratio * 100)}%`;
+    }
+    function pathLabel() {
+        const map = { spirit: '灵修', soul: '魂修', body: '体修' };
+        return map[GameState.cultivationPath] || '灵修';
+    }
+    function formatLargeNum(n) {
+        if (n >= 1e8) return (n / 1e8).toFixed(1) + '亿';
+        if (n >= 1e4) return (n / 1e4).toFixed(1) + '万';
+        return n.toLocaleString();
     }
 
     /* ================================
@@ -553,18 +643,14 @@
 
         // Natural recovery
         p.hp = Math.min(p.maxHp, Math.round(p.hp + p.maxHp * 0.05));
-        p.qi = Math.min(p.maxQi, Math.round(p.qi + p.maxQi * 0.08));
+        p.currentQi = Math.min(p.SPCap, Math.round(p.currentQi + p.SPCap * 0.08));
 
         // Increment cultivation time
         p.cultivationTime += 3600;
 
         // Slight passive gains
-        if (Math.random() < 0.2) {
-            p.spirit = Math.min(100, p.spirit + 0.5);
-        }
-        if (Math.random() < 0.15) {
-            p.body = Math.min(100, p.body + 0.3);
-        }
+        if (Math.random() < 0.2) p.SS = Math.round((p.SS || 5) * 1.002);
+        if (Math.random() < 0.15) p.BS = Math.round((p.BS || 5) * 1.001);
 
         updateCultivationUI();
         updateCombatUI();
@@ -604,14 +690,14 @@
 
             GameState.cultivationInterval = setInterval(() => {
                 p.cultivationTime += 1;
-                p.qi = Math.min(p.maxQi, p.qi + p.cultivationRate * 0.1);
+                p.currentQi = Math.min(p.SPCap, p.currentQi + p.cultivationRate * 0.15);
 
                 const progressGain = p.cultivationRate * 0.008;
                 p.cultivationProgress = Math.min(100, p.cultivationProgress + progressGain);
 
-                if (Math.random() < 0.001) {
-                    p.spirit = Math.min(100, p.spirit + 0.1);
-                    p.body = Math.min(100, p.body + 0.08);
+                if (Math.random() < 0.002) {
+                    p.SPI = Math.round(p.SPI * 1.001);
+                    p.SPC = Math.round(p.SPC * 1.001);
                 }
 
                 updateCultivationUI();
@@ -651,11 +737,13 @@
         DOM.combatLog.scrollTop = DOM.combatLog.scrollHeight;
     }
 
+    // 战斗力联动伤害公式: 基础伤害 = [(SPI + SPC) × log₁₀(SPCap) + SS + BS] × K_skill / 防御系数
     function getCombatDamage(attacker, defender, skillMultiplier = 1) {
-        const baseDmg = attacker.attack * skillMultiplier;
-        const reduction = defender.defense * 0.4;
-        const variance = 0.85 + Math.random() * 0.3;
-        return Math.max(5, Math.round((baseDmg - reduction) * variance));
+        const logCap = Math.log10(Math.max(1, attacker.SPCap || 1));
+        const rawPower = (attacker.SPI + attacker.SPC) * logCap + (attacker.SS || 5) + (attacker.BS || 5);
+        const defFactor = 1 + (defender.BS || 5) * 0.02 + (defender.defense || 0) * 0.01;
+        const variance = 0.9 + Math.random() * 0.2;
+        return Math.max(3, Math.round(rawPower * skillMultiplier * variance / defFactor));
     }
 
     function playerAttack(skillName, skillMultiplier, skillColor) {
@@ -732,9 +820,9 @@
             addCombatLog('战斗胜利！妖兽化为灵气消散于天地间。', 'victory');
             const reward = 50 + Math.floor(Math.random() * 80);
             GameState.player.spiritStones += reward;
-            GameState.player.spirit = Math.min(100, GameState.player.spirit + 1);
+            GameState.player.SS = Math.round((GameState.player.SS || 5) * 1.01);
             updateCultivationUI();
-            NotificationSystem.success('战斗胜利', `你击败了 ${GameState.enemy.name}！获得 ${reward} 灵石。`);
+            NotificationSystem.success('战斗胜利', `你击败了 ${GameState.enemy.name}！获得 ${reward} 灵石，灵魂强度微幅提升。`);
         } else {
             addCombatLog('你被击败了...意识逐渐模糊...', 'enemy-action');
             GameState.player.hp = Math.round(GameState.player.maxHp * 0.3);
@@ -776,10 +864,11 @@
         if (!GameState.combatActive) { startCombat(); return; }
         if (!consumeStamina(5, '防御')) return;
         const p = GameState.player;
-        p.defense = Math.round(p.defense * 1.8);
+        const origDef = p.defense;
+        p.defense = Math.round(p.defense + (p.BS || 10) * 2);
         addCombatLog('你凝神防御，护体真气流转全身。', 'player-action');
         setTimeout(() => {
-            p.defense = 30;
+            p.defense = origDef;
             addCombatLog('防御状态解除。', 'system');
         }, 3000);
         setTimeout(enemyTurn, 800);
@@ -806,7 +895,7 @@
             toggleCultivation();
         }
 
-        const successRate = 40 + (p.spirit + p.body) / 5;
+        const successRate = 35 + p.cultivationProgress / 3 + Math.log10(p.SS + p.BS + 1) * 10;
         const success = Math.random() * 100 < successRate;
 
         // Show cinematic
@@ -855,36 +944,50 @@
 
     function handleBreakthroughSuccess() {
         const p = GameState.player;
+        const prevRealmIdx = p.realmIndex;
         p.realmTier++;
 
         if (p.realmTier > REALMS[p.realmIndex].tiers.length) {
             p.realmIndex = Math.min(p.realmIndex + 1, REALMS.length - 1);
             p.realmTier = 1;
             p.realm = REALMS[p.realmIndex].name;
+            p.lifespan = REALMS[p.realmIndex].lifespan;
+
+            // 跨大境界：属性 ×10（练气→筑基为10倍跃升）
+            if (p.realmIndex > prevRealmIdx) {
+                p.SPI = Math.round(p.SPI * 10);
+                p.SPC = Math.round(p.SPC * 10);
+                p.SPCap = Math.round(p.SPCap * 10);
+                p.SS = Math.round(p.SS * 8);
+                p.BS = Math.round(p.BS * 8);
+            }
         }
 
+        // 小境界提升：属性 ×1.3
+        p.SPI = Math.round(p.SPI * 1.3);
+        p.SPC = Math.round(p.SPC * 1.3);
+        p.SPCap = Math.round(p.SPCap * 1.3);
+        p.SS = Math.round(p.SS * 1.2);
+        p.BS = Math.round(p.BS * 1.2);
         p.cultivationProgress = 0;
         p.maxHp = Math.round(p.maxHp * 1.4);
         p.hp = p.maxHp;
-        p.maxQi = Math.round(p.maxQi * 1.3);
-        p.qi = p.maxQi;
+        p.currentQi = p.SPCap;
         p.attack = Math.round(p.attack * 1.3);
         p.defense = Math.round(p.defense * 1.2);
-        p.spirit = Math.min(100, p.spirit + 8);
-        p.body = Math.min(100, p.body + 6);
 
         updateCultivationUI();
         updateCombatUI();
 
         const realmFull = `${p.realm}${REALMS[p.realmIndex]?.tiers[p.realmTier - 1] || ''}`;
-        NotificationSystem.success('境界突破成功！', `你成功突破至 ${realmFull}！实力大幅提升！`, 6000);
+        NotificationSystem.success('境界突破成功！', `你成功突破至 ${realmFull}！灵力三维大幅跃升！寿元 ${p.lifespan === Infinity ? '无尽' : p.lifespan + '年'}。`, 6000);
     }
 
     function handleBreakthroughFailure() {
         const p = GameState.player;
         p.cultivationProgress = Math.max(0, p.cultivationProgress - 25);
         p.hp = Math.round(p.maxHp * 0.3);
-        p.qi = Math.round(p.maxQi * 0.4);
+        p.currentQi = Math.round(p.SPCap * 0.4);
 
         updateCultivationUI();
         updateCombatUI();
@@ -1257,7 +1360,7 @@
         let used = false;
         if (selectedItemKey === 'healPill') {
             p.hp = Math.min(p.maxHp, p.hp + 200);
-            p.qi = Math.min(p.maxQi, p.qi + 100);
+            p.currentQi = Math.min(p.SPCap, p.currentQi + 100);
             updateCultivationUI();
             NotificationSystem.success('使用回灵丹', '生命 +200，灵力 +100');
             used = true;
