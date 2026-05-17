@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="修仙世界 - 东方玄幻网页游戏">
+    <title>修仙世界 · 太虚之境</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 灵气粒子背景 -->
+    <canvas id="particleCanvas" aria-hidden="true"></canvas>
+
+    <!-- 主容器 -->
+    <div id="appContainer">
+
+        <!-- 顶部状态栏 -->
+        <header id="topBar">
+            <div class="topbar-inner">
+                <div class="logo-section">
+                    <div class="logo-icon" aria-hidden="true">
+                        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="24" cy="24" r="23" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+                            <circle cx="24" cy="24" r="16" stroke="currentColor" stroke-width="0.8" opacity="0.4"/>
+                            <path d="M24 4C24 4 28 12 32 14C36 16 38 22 38 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+                            <path d="M24 44C24 44 20 36 16 34C12 32 10 26 10 26" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+                            <path d="M4 24C4 24 12 20 14 16C16 12 22 10 22 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+                            <path d="M44 24C44 24 36 28 34 32C32 36 26 38 26 38" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+                            <circle cx="24" cy="24" r="6" fill="currentColor" opacity="0.85"/>
+                            <circle cx="24" cy="24" r="3" fill="#0a0e17"/>
+                        </svg>
+                    </div>
+                    <div class="logo-text">
+                        <h1>太虚之境</h1>
+                        <span class="logo-subtitle">修仙世界</span>
+                    </div>
+                </div>
+                <div class="status-section">
+                    <div class="status-item realm-display" id="realmDisplay" title="当前境界">
+                        <svg class="status-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2L15 9H22L16 14L18 21L12 17L6 21L8 14L2 9H9L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                        <span class="status-label">境界</span>
+                        <span class="status-value" id="realmName">炼气期</span>
+                        <span class="status-tier" id="realmTier">三层</span>
+                    </div>
+                    <div class="status-item" id="spiritStones" title="灵石">
+                        <svg class="status-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2L16 6L12 10L8 6L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 10L16 14L12 18L8 14L12 10Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                        <span class="status-value">1,280</span>
+                        <span class="status-label">灵石</span>
+                    </div>
+                    <div class="status-item" id="spiritQi" title="灵力">
+                        <svg class="status-icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.2" opacity="0.6"/><circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.8"/></svg>
+                        <span class="status-value" id="qiValue">380</span>
+                        <span class="status-label">灵力</span>
+                    </div>
+                    <div class="status-item stamina-display" id="staminaDisplay" title="体力">
+                        <svg class="status-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 2 6 6 6 12C6 18 12 22 12 22C12 22 18 18 18 12C18 6 12 2 12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                        <span class="status-value" id="staminaValue">100</span>
+                        <span class="status-label">体力</span>
+                    </div>
+                    <button class="topbar-btn btn-next-turn" id="btnNextTurn" title="下一回合" aria-label="进入下一回合">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>下月</span>
+                    </button>
+                    <button class="topbar-btn" id="btnSettings" title="设置" aria-label="打开设置">
+                        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" stroke-width="1.5"/></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主体区域 -->
+        <div id="mainWrapper">
+            <!-- 侧边导航 -->
+            <nav id="sideNav" aria-label="主导航">
+                <div class="nav-inner">
+                    <button class="nav-item active" data-tab="cultivation" id="navCultivation" aria-current="page">
+                        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M12 2V8M12 16V22M2 12H8M16 12H22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.5"/></svg>
+                        <span>修炼</span>
+                    </button>
+                    <button class="nav-item" data-tab="combat" id="navCombat">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M18 4L22 8L14 16L10 12L4 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 4H14V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>战斗</span>
+                    </button>
+                    <button class="nav-item" data-tab="breakthrough" id="navBreakthrough">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                        <span>突破</span>
+                    </button>
+                    <button class="nav-item" data-tab="abode" id="navAbode">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M3 9L12 2L21 9V20A2 2 0 0 1 19 22H5A2 2 0 0 1 3 20V9Z" stroke="currentColor" stroke-width="1.5"/><path d="M9 22V12H15V22" stroke="currentColor" stroke-width="1.5"/></svg>
+                        <span>洞府</span>
+                    </button>
+                    <button class="nav-item" data-tab="techniques" id="navTechniques">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.5 2H20V22H6.5A2.5 2.5 0 0 1 4 19.5V4.5A2.5 2.5 0 0 1 6.5 2Z" stroke="currentColor" stroke-width="1.5"/></svg>
+                        <span>功法</span>
+                    </button>
+                    <button class="nav-item" data-tab="market" id="navMarket">
+                        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M12 6V18M6 12H18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <span>坊市</span>
+                    </button>
+                    <button class="nav-item" data-tab="sect" id="navSect">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M17 21V19A4 4 0 0 0 13 15H5A4 4 0 0 0 1 19V21" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M23 21V19A4 4 0 0 0 19 15H18" stroke="currentColor" stroke-width="1.5"/><path d="M15 5A4 4 0 0 1 15 13" stroke="currentColor" stroke-width="1.5"/></svg>
+                        <span>宗门</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <main id="mainContent">
+                <!-- 修炼页面 -->
+                <section class="tab-content active" id="tabCultivation" aria-labelledby="navCultivation">
+                    <div class="cultivation-layout">
+                        <div class="cult-main">
+                            <div class="cult-vortex" id="cultVortex">
+                                <div class="vortex-ring ring-1"></div>
+                                <div class="vortex-ring ring-2"></div>
+                                <div class="vortex-ring ring-3"></div>
+                                <div class="vortex-core">
+                                    <svg viewBox="0 0 80 80" fill="none">
+                                        <circle cx="40" cy="40" r="36" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+                                        <circle cx="40" cy="40" r="24" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
+                                        <path d="M40 8C40 8 44 20 52 24C60 28 68 30 68 30" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+                                        <path d="M40 72C40 72 36 60 28 56C20 52 12 50 12 50" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+                                        <circle cx="40" cy="40" r="8" fill="currentColor" opacity="0.7"/>
+                                        <circle cx="40" cy="40" r="3" fill="#0a0e17"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="cult-info">
+                                <h2 class="cult-title" id="cultTitle">太虚吐纳术</h2>
+                                <p class="cult-desc" id="cultDesc">吸纳天地灵气，淬炼己身，感悟大道至理。</p>
+                                <div class="cult-progress">
+                                    <div class="progress-header">
+                                        <span>修炼进度</span>
+                                        <span id="cultPercent">72%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="cultProgressBar" style="width:72%"></div>
+                                    </div>
+                                </div>
+                                <div class="cult-stats">
+                                    <div class="cult-stat">
+                                        <span class="stat-label">灵力吸收</span>
+                                        <span class="stat-val" id="cultRate">12.5/秒</span>
+                                    </div>
+                                    <div class="cult-stat">
+                                        <span class="stat-label">已修炼</span>
+                                        <span class="stat-val" id="cultTime">3时24分</span>
+                                    </div>
+                                    <div class="cult-stat">
+                                        <span class="stat-label">效率加成</span>
+                                        <span class="stat-val accent" id="cultBonus">+35%</span>
+                                    </div>
+                                </div>
+                                <button class="btn-primary btn-cultivate" id="btnCultivate">
+                                    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><polygon points="10,8 16,12 10,16" fill="currentColor"/></svg>
+                                    <span id="btnCultivateText">开始修炼</span>
+                                </button>
+                            </div>
+                        </div>
+                        <aside class="cult-sidebar">
+                            <div class="side-card">
+                                <h3>当前状态</h3>
+                                <div class="side-stat">
+                                    <span>灵力值</span>
+                                    <div class="mini-bar"><div class="mini-fill" style="width:65%" id="miniQi"></div></div>
+                                </div>
+                                <div class="side-stat">
+                                    <span>神识</span>
+                                    <div class="mini-bar"><div class="mini-fill spirit" style="width:48%" id="miniSpirit"></div></div>
+                                </div>
+                                <div class="side-stat">
+                                    <span>肉身</span>
+                                    <div class="mini-bar"><div class="mini-fill body" style="width:55%" id="miniBody"></div></div>
+                                </div>
+                            </div>
+                            <div class="side-card">
+                                <h3>灵根资质</h3>
+                                <div class="element-grid">
+                                    <div class="element" data-element="金"><span class="elem-icon">金</span><div class="elem-bar"><div style="width:72%"></div></div></div>
+                                    <div class="element" data-element="木"><span class="elem-icon">木</span><div class="elem-bar"><div style="width:45%"></div></div></div>
+                                    <div class="element" data-element="水"><span class="elem-icon">水</span><div class="elem-bar"><div style="width:88%"></div></div></div>
+                                    <div class="element" data-element="火"><span class="elem-icon">火</span><div class="elem-bar"><div style="width:60%"></div></div></div>
+                                    <div class="element" data-element="土"><span class="elem-icon">土</span><div class="elem-bar"><div style="width:35%"></div></div></div>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                </section>
+
+                <!-- 战斗页面 -->
+                <section class="tab-content" id="tabCombat" aria-labelledby="navCombat">
+                    <div class="combat-layout">
+                        <div class="combat-arena">
+                            <div class="combatant enemy" id="enemyCard">
+                                <div class="combatant-avatar">
+                                    <div class="avatar-frame enemy-frame">
+                                        <svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="1.2" opacity="0.4"/><path d="M20 28C20 20 44 20 44 28C44 36 38 42 32 42C26 42 20 36 20 28Z" stroke="currentColor" stroke-width="1.2"/><circle cx="26" cy="30" r="3" fill="currentColor" opacity="0.8"/><circle cx="38" cy="30" r="3" fill="currentColor" opacity="0.8"/></svg>
+                                    </div>
+                                </div>
+                                <h3 class="combatant-name" id="enemyName">妖兽·赤炎虎</h3>
+                                <span class="combatant-realm" id="enemyRealm">练气期六层</span>
+                                <div class="hp-bar-wrap"><div class="hp-bar enemy-hp"><div class="hp-fill" id="enemyHpBar" style="width:100%"></div></div></div>
+                                <span class="hp-text" id="enemyHpText">800/800</span>
+                            </div>
+                            <div class="combat-vs">
+                                <div class="vs-circle">
+                                    <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="1" opacity="0.5"/><path d="M18 14L30 24L18 34" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </div>
+                            </div>
+                            <div class="combatant player" id="playerCard">
+                                <div class="combatant-avatar">
+                                    <div class="avatar-frame player-frame">
+                                        <svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="1.2" opacity="0.4"/><path d="M24 26C24 18 40 18 40 26C40 36 34 44 32 44C30 44 24 36 24 26Z" stroke="currentColor" stroke-width="1.2"/><circle cx="27" cy="28" r="2.5" fill="currentColor" opacity="0.8"/><circle cx="37" cy="28" r="2.5" fill="currentColor" opacity="0.8"/></svg>
+                                    </div>
+                                </div>
+                                <h3 class="combatant-name">无名修士</h3>
+                                <span class="combatant-realm" id="playerRealm">练气期三层</span>
+                                <div class="hp-bar-wrap"><div class="hp-bar player-hp"><div class="hp-fill" id="playerHpBar" style="width:100%"></div></div></div>
+                                <span class="hp-text" id="playerHpText">500/500</span>
+                            </div>
+                        </div>
+                        <div class="combat-actions">
+                            <div class="action-row">
+                                <button class="btn-combat" id="btnAttack">
+                                    <svg viewBox="0 0 24 24" fill="none"><path d="M18 4L22 8L14 16L10 12L4 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    <span>普通攻击</span>
+                                </button>
+                                <button class="btn-combat" id="btnSkill1">
+                                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L15 9H22L16 14L18 21L12 17L6 21L8 14L2 9H9L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                                    <span>玄冰咒</span>
+                                </button>
+                                <button class="btn-combat" id="btnSkill2">
+                                    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 3V12L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                    <span>烈焰掌</span>
+                                </button>
+                                <button class="btn-combat" id="btnDefend">
+                                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 18 12 22 12 22Z" stroke="currentColor" stroke-width="1.8"/></svg>
+                                    <span>防御</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="combat-log" id="combatLog" aria-label="战斗日志">
+                            <div class="log-entry system">战斗开始！你遭遇了 <span class="highlight">妖兽·赤炎虎</span></div>
+                            <div class="log-entry system">妖兽率先发起攻击！</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 突破页面 -->
+                <section class="tab-content" id="tabBreakthrough" aria-labelledby="navBreakthrough">
+                    <div class="breakthrough-layout">
+                        <div class="bt-current">
+                            <h3>当前境界</h3>
+                            <div class="realm-card current">
+                                <div class="realm-glow"></div>
+                                <span class="realm-icon-lg">
+                                    <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="1.2"/><circle cx="24" cy="24" r="10" stroke="currentColor" stroke-width="0.8" opacity="0.6"/><circle cx="24" cy="24" r="3" fill="currentColor"/></svg>
+                                </span>
+                                <span class="realm-name-lg" id="btCurRealm">炼气期</span>
+                                <span class="realm-tier-lg" id="btCurTier">三层</span>
+                            </div>
+                        </div>
+                        <div class="bt-arrow">
+                            <svg viewBox="0 0 64 24" fill="none"><path d="M4 12H52M52 12L44 4M52 12L44 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <div class="arrow-sparkle" id="arrowEffect"></div>
+                        </div>
+                        <div class="bt-next">
+                            <h3>突破至</h3>
+                            <div class="realm-card next locked" id="btNextRealmCard">
+                                <div class="realm-glow future"></div>
+                                <span class="realm-icon-lg">
+                                    <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="1.2"/><circle cx="24" cy="24" r="10" stroke="currentColor" stroke-width="0.8" opacity="0.4"/><path d="M24 4L28 16L40 16L30 24L34 36L24 28L14 36L18 24L8 16L20 16Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                                </span>
+                                <span class="realm-name-lg" id="btNextRealm">筑基期</span>
+                                <span class="realm-tier-lg">初期</span>
+                            </div>
+                        </div>
+                        <div class="bt-info">
+                            <div class="bt-details">
+                                <div class="bt-detail-row">
+                                    <span>突破成功率</span>
+                                    <span class="bt-rate" id="btSuccessRate">68%</span>
+                                </div>
+                                <div class="bt-detail-row">
+                                    <span>所需灵力</span>
+                                    <span>500/500</span>
+                                </div>
+                                <div class="bt-detail-row">
+                                    <span>所需神识</span>
+                                    <span>200/200</span>
+                                </div>
+                                <div class="bt-detail-row">
+                                    <span>突破丹药</span>
+                                    <span class="ready">筑基丹 x1</span>
+                                </div>
+                            </div>
+                            <div class="bt-tribulation">
+                                <h4>天劫预警</h4>
+                                <div class="tribulation-indicator" id="tribulationGauge">
+                                    <div class="trib-level" style="width:30%"></div>
+                                    <span>一重雷劫</span>
+                                </div>
+                            </div>
+                            <button class="btn-primary btn-breakthrough" id="btnBreakthrough">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                                <span>开始突破</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 洞府页面 · 装备与物品 -->
+                <section class="tab-content" id="tabAbode" aria-labelledby="navAbode">
+                    <div class="abode-layout">
+                        <!-- 左栏：人物装备纸娃娃 -->
+                        <div class="abode-left">
+                            <div class="paperdoll-wrapper">
+                                <h2 class="panel-title">装备栏</h2>
+                                <div class="paperdoll">
+                                    <!-- 中央角色 -->
+                                    <div class="paperdoll-avatar" id="paperdollAvatar">
+                                        <div class="avatar-bg">
+                                            <svg viewBox="0 0 80 100" fill="none">
+                                                <ellipse cx="40" cy="38" rx="16" ry="18" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+                                                <path d="M18 95C18 72 22 58 40 58C58 58 62 72 62 95" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+                                                <line x1="40" y1="56" x2="40" y2="80" stroke="currentColor" stroke-width="0.8" opacity="0.3"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <!-- 装备槽位环绕 -->
+                                    <div class="paperdoll-slot slot-helm" data-slot="helm" id="slotHelm">
+                                        <div class="pd-slot-inner">
+                                            <svg viewBox="0 0 28 28" fill="none"><path d="M6 20C6 20 6 12 14 8C22 12 22 20 22 20" stroke="currentColor" stroke-width="1.3"/><rect x="8" y="4" width="12" height="6" rx="3" stroke="currentColor" stroke-width="1.3"/></svg>
+                                        </div>
+                                        <span class="pd-slot-label">头冠</span>
+                                        <span class="pd-slot-name empty-slot" data-slot-name="helm">空</span>
+                                    </div>
+                                    <div class="paperdoll-slot slot-weapon equipped" data-slot="weapon" id="slotWeapon">
+                                        <div class="pd-slot-inner">
+                                            <svg viewBox="0 0 28 28" fill="none"><path d="M6 24L16 6L20 10L10 24H6Z" stroke="currentColor" stroke-width="1.3"/><path d="M16 6L22 2L26 8L18 14" stroke="currentColor" stroke-width="1.3"/></svg>
+                                        </div>
+                                        <span class="pd-slot-label">武器</span>
+                                        <span class="pd-slot-name" data-slot-name="weapon">青锋剑</span>
+                                    </div>
+                                    <div class="paperdoll-slot slot-armor equipped" data-slot="armor" id="slotArmor">
+                                        <div class="pd-slot-inner">
+                                            <svg viewBox="0 0 28 28" fill="none"><path d="M14 2L22 6V13C22 19 14 24 14 24C14 24 6 19 6 13V6L14 2Z" stroke="currentColor" stroke-width="1.3"/></svg>
+                                        </div>
+                                        <span class="pd-slot-label">衣袍</span>
+                                        <span class="pd-slot-name" data-slot-name="armor">玄铁甲</span>
+                                    </div>
+                                    <div class="paperdoll-slot slot-belt" data-slot="belt" id="slotBelt">
+                                        <div class="pd-slot-inner">
+                                            <svg viewBox="0 0 28 28" fill="none"><rect x="4" y="10" width="20" height="6" rx="3" stroke="currentColor" stroke-width="1.3"/><circle cx="14" cy="13" r="2" fill="currentColor" opacity="0.5"/></svg>
+                                        </div>
+                                        <span class="pd-slot-label">腰带</span>
+                                        <span class="pd-slot-name empty-slot" data-slot-name="belt">空</span>
+                                    </div>
+                                    <div class="paperdoll-slot slot-bracer" data-slot="bracer" id="slotBracer">
+                                        <div class="pd-slot-inner">
+                                            <svg viewBox="0 0 28 28" fill="none"><rect x="4" y="6" width="20" height="14" rx="4" stroke="currentColor" stroke-width="1.3"/><line x1="10" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="0.8"/></svg>
+                                        </div>
+                                        <span class="pd-slot-label">护腕</span>
+                                        <span class="pd-slot-name empty-slot" data-slot-name="bracer">空</span>
+                                    </div>
+                                    <div class="paperdoll-slot slot-ring equipped" data-slot="ring" id="slotRing">
+                                        <div class="pd-slot-inner">
+                                            <svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="9" stroke="currentColor" stroke-width="1.3"/><circle cx="14" cy="14" r="3" fill="currentColor" opacity="0.5"/></svg>
+                                        </div>
+                                        <span class="pd-slot-label">戒指</span>
+                                        <span class="pd-slot-name" data-slot-name="ring">灵玉环</span>
+                                    </div>
+                                    <div class="paperdoll-slot slot-boots" data-slot="boots" id="slotBoots">
+                                        <div class="pd-slot-inner">
+                                            <svg viewBox="0 0 28 28" fill="none"><path d="M6 22L14 10L22 22" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/></svg>
+                                        </div>
+                                        <span class="pd-slot-label">鞋子</span>
+                                        <span class="pd-slot-name empty-slot" data-slot-name="boots">空</span>
+                                    </div>
+                                    <div class="paperdoll-slot slot-treasure" data-slot="treasure" id="slotTreasure">
+                                        <div class="pd-slot-inner">
+                                            <svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="12" r="10" stroke="currentColor" stroke-width="1.3"/><path d="M6 18C6 18 10 24 14 24C18 24 22 18 22 18" stroke="currentColor" stroke-width="1.3"/></svg>
+                                        </div>
+                                        <span class="pd-slot-label">法宝</span>
+                                        <span class="pd-slot-name empty-slot" data-slot-name="treasure">空</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 属性面板 -->
+                            <div class="abode-stats" id="abodeStats">
+                                <h3 class="stats-title">角色属性</h3>
+                                <div class="stat-row"><span class="s-label">生命值</span><span class="s-val" id="statHp">500</span><div class="s-bar"><div class="s-fill hp-fill-stat" style="width:100%"></div></div></div>
+                                <div class="stat-row"><span class="s-label">灵力值</span><span class="s-val" id="statQi">380</span><div class="s-bar"><div class="s-fill qi-fill-stat" style="width:76%"></div></div></div>
+                                <div class="stat-row"><span class="s-label">攻击力</span><span class="s-val accent-atk" id="statAtk">45</span></div>
+                                <div class="stat-row"><span class="s-label">防御力</span><span class="s-val accent-def" id="statDef">30</span></div>
+                                <div class="stat-row"><span class="s-label">神识</span><span class="s-val accent-spi" id="statSpirit">48</span></div>
+                                <div class="stat-row"><span class="s-label">肉身</span><span class="s-val accent-bod" id="statBody">55</span></div>
+                            </div>
+                        </div>
+
+                        <!-- 右栏：物品栏 -->
+                        <div class="abode-right">
+                            <div class="inventory-panel">
+                                <div class="panel-header">
+                                    <h2 class="panel-title">储物袋</h2>
+                                    <span class="inv-capacity" id="invCapacity">16/24</span>
+                                </div>
+                                <div class="inv-tabs" id="invTabs">
+                                    <button class="inv-tab active" data-filter="all">全部</button>
+                                    <button class="inv-tab" data-filter="equipment">装备</button>
+                                    <button class="inv-tab" data-filter="consumable">丹药</button>
+                                    <button class="inv-tab" data-filter="material">材料</button>
+                                    <button class="inv-tab" data-filter="other">其他</button>
+                                </div>
+                                <div class="inv-grid" id="inventoryGrid">
+                                    <!-- 装备类 -->
+                                    <div class="inv-item" data-category="equipment" data-item="ironSword" id="invItemSword">
+                                        <div class="item-icon weapon-icon">
+                                            <svg viewBox="0 0 32 32" fill="none"><path d="M6 26L16 6L20 10L10 26H6Z" stroke="currentColor" stroke-width="1.2"/><path d="M16 6L24 2L28 8L18 14" stroke="currentColor" stroke-width="1.2"/></svg>
+                                        </div>
+                                        <span class="item-name">青锋剑</span>
+                                        <span class="item-grade-tag">中品法器</span>
+                                    </div>
+                                    <div class="inv-item" data-category="equipment" data-item="cloudBoots" id="invItemBoots">
+                                        <div class="item-icon">
+                                            <svg viewBox="0 0 32 32" fill="none"><path d="M8 24L16 14L24 24" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 24C10 18 22 18 22 24" stroke="currentColor" stroke-width="1" opacity="0.5"/></svg>
+                                        </div>
+                                        <span class="item-name">流云靴</span>
+                                        <span class="item-grade-tag">下品法器</span>
+                                    </div>
+                                    <div class="inv-item" data-category="equipment" data-item="jadeBelt" id="invItemBelt">
+                                        <div class="item-icon">
+                                            <svg viewBox="0 0 32 32" fill="none"><rect x="4" y="12" width="24" height="6" rx="3" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="15" r="2.5" fill="currentColor" opacity="0.5"/></svg>
+                                        </div>
+                                        <span class="item-name">灵玉腰带</span>
+                                        <span class="item-grade-tag">中品法器</span>
+                                    </div>
+                                    <!-- 丹药类 -->
+                                    <div class="inv-item" data-category="consumable" data-item="healPill" id="invItemHealPill">
+                                        <div class="item-icon pill">
+                                            <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="16" r="6" fill="currentColor" opacity="0.4"/></svg>
+                                        </div>
+                                        <span class="item-name">回灵丹</span>
+                                        <span class="item-qty">x8</span>
+                                    </div>
+                                    <div class="inv-item" data-category="consumable" data-item="foundationPill" id="invItemFoundationPill">
+                                        <div class="item-icon rare">
+                                            <svg viewBox="0 0 32 32" fill="none"><rect x="6" y="6" width="20" height="20" rx="4" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="16" r="5" fill="currentColor" opacity="0.5"/></svg>
+                                        </div>
+                                        <span class="item-name">筑基丹</span>
+                                        <span class="item-qty">x1</span>
+                                    </div>
+                                    <div class="inv-item" data-category="consumable" data-item="qiPill" id="invItemQiPill">
+                                        <div class="item-icon pill">
+                                            <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" stroke="currentColor" stroke-width="1.2"/><path d="M16 6V16L22 22" stroke="currentColor" stroke-width="1"/></svg>
+                                        </div>
+                                        <span class="item-name">聚灵丹</span>
+                                        <span class="item-qty">x5</span>
+                                    </div>
+                                    <!-- 材料类 -->
+                                    <div class="inv-item" data-category="material" data-item="spiritHerb" id="invItemHerb">
+                                        <div class="item-icon">
+                                            <svg viewBox="0 0 32 32" fill="none"><path d="M16 28V12C16 8 20 4 24 4C20 8 20 12 20 12" stroke="currentColor" stroke-width="1.2"/><path d="M12 12C12 12 12 8 8 4C12 4 16 8 16 12" stroke="currentColor" stroke-width="1.2"/></svg>
+                                        </div>
+                                        <span class="item-name">灵草</span>
+                                        <span class="item-qty">x15</span>
+                                    </div>
+                                    <div class="inv-item" data-category="material" data-item="beastCore" id="invItemCore">
+                                        <div class="item-icon epic">
+                                            <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="1.2"/><path d="M16 6L18 14L26 16L18 18L16 26L14 18L6 16L14 14Z" stroke="currentColor" stroke-width="1"/></svg>
+                                        </div>
+                                        <span class="item-name">妖兽内丹</span>
+                                        <span class="item-qty">x2</span>
+                                    </div>
+                                    <div class="inv-item" data-category="material" data-item="ironOre" id="invItemOre">
+                                        <div class="item-icon">
+                                            <svg viewBox="0 0 32 32" fill="none"><rect x="8" y="8" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="16" r="4" fill="currentColor" opacity="0.3"/></svg>
+                                        </div>
+                                        <span class="item-name">玄铁矿石</span>
+                                        <span class="item-qty">x7</span>
+                                    </div>
+                                    <!-- 其他类 -->
+                                    <div class="inv-item" data-category="other" data-item="jadeSlip" id="invItemSlip">
+                                        <div class="item-icon">
+                                            <svg viewBox="0 0 32 32" fill="none"><rect x="10" y="4" width="12" height="24" rx="2" stroke="currentColor" stroke-width="1.2"/><line x1="14" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="0.8"/></svg>
+                                        </div>
+                                        <span class="item-name">神秘玉简</span>
+                                        <span class="item-qty">x3</span>
+                                    </div>
+                                    <div class="inv-item" data-category="other" data-item="spiritStone" id="invItemStone">
+                                        <div class="item-icon gold-icon">
+                                            <svg viewBox="0 0 32 32" fill="none"><polygon points="16,4 24,12 16,20 8,12" stroke="currentColor" stroke-width="1.2"/></polygon></svg>
+                                        </div>
+                                        <span class="item-name">灵石</span>
+                                        <span class="item-qty">x245</span>
+                                    </div>
+                                    <div class="inv-item" data-category="other" data-item="formationFlag" id="invItemFlag">
+                                        <div class="item-icon">
+                                            <svg viewBox="0 0 32 32" fill="none"><line x1="16" y1="4" x2="16" y2="28" stroke="currentColor" stroke-width="1.2"/><path d="M16 4L26 10L16 16Z" stroke="currentColor" stroke-width="1.2"/></svg>
+                                        </div>
+                                        <span class="item-name">阵旗</span>
+                                        <span class="item-qty">x4</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 物品详情栏 -->
+                            <div class="item-detail-panel" id="itemDetailPanel">
+                                <div class="detail-placeholder">
+                                    <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="currentColor" stroke-width="1" opacity="0.3"/><path d="M20 12V20L26 26" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/></svg>
+                                    <span>点击物品查看详情</span>
+                                </div>
+                                <div class="detail-content" id="itemDetailContent" style="display:none">
+                                    <div class="detail-icon-wrap" id="detailIcon"></div>
+                                    <div class="detail-info">
+                                        <h3 id="detailName"></h3>
+                                        <span class="detail-grade" id="detailGrade"></span>
+                                        <p class="detail-desc" id="detailDesc"></p>
+                                        <div class="detail-actions">
+                                            <button class="btn-primary btn-sm" id="btnEquipItem">装备</button>
+                                            <button class="btn-secondary btn-sm" id="btnUseItem">使用</button>
+                                            <button class="btn-secondary btn-sm" id="btnDropItem">丢弃</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 功法页面 -->
+                <section class="tab-content" id="tabTechniques" aria-labelledby="navTechniques">
+                    <div class="techniques-layout">
+                        <div class="tech-grid" id="techniqueGrid">
+                            <div class="tech-card mastered" id="techCard1">
+                                <div class="tech-card-inner">
+                                    <div class="tech-icon-wrap">
+                                        <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="1.2"/><path d="M20 2V14M20 26V38" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="20" cy="20" r="6" fill="currentColor" opacity="0.4"/></svg>
+                                    </div>
+                                    <div class="tech-info">
+                                        <h3>太虚吐纳术</h3>
+                                        <span class="tech-grade">黄阶上品</span>
+                                        <div class="tech-level">
+                                            <span>熟练度</span>
+                                            <div class="mini-bar"><div class="mini-fill" style="width:78%"></div></div>
+                                        </div>
+                                        <p class="tech-desc">基础吐纳之法，调和阴阳，稳固根基。</p>
+                                    </div>
+                                </div>
+                                <div class="tech-card-glow"></div>
+                            </div>
+                            <div class="tech-card mastered" id="techCard2">
+                                <div class="tech-card-inner">
+                                    <div class="tech-icon-wrap fire">
+                                        <svg viewBox="0 0 40 40" fill="none"><path d="M20 38C14 38 6 30 10 18C14 6 20 2 20 2C20 2 26 6 30 18C34 30 26 38 20 38Z" stroke="currentColor" stroke-width="1.2"/></svg>
+                                    </div>
+                                    <div class="tech-info">
+                                        <h3>烈焰掌</h3>
+                                        <span class="tech-grade">玄阶下品</span>
+                                        <div class="tech-level">
+                                            <span>熟练度</span>
+                                            <div class="mini-bar"><div class="mini-fill fire-fill" style="width:45%"></div></div>
+                                        </div>
+                                        <p class="tech-desc">催动真火之力，凝聚掌心，焚尽万物。</p>
+                                    </div>
+                                </div>
+                                <div class="tech-card-glow fire-glow"></div>
+                            </div>
+                            <div class="tech-card mastered" id="techCard3">
+                                <div class="tech-card-inner">
+                                    <div class="tech-icon-wrap ice">
+                                        <svg viewBox="0 0 40 40" fill="none"><polygon points="20,2 28,14 20,26 12,14" stroke="currentColor" stroke-width="1.2"/></polygon></svg>
+                                    </div>
+                                    <div class="tech-info">
+                                        <h3>玄冰咒</h3>
+                                        <span class="tech-grade">玄阶下品</span>
+                                        <div class="tech-level">
+                                            <span>熟练度</span>
+                                            <div class="mini-bar"><div class="mini-fill ice-fill" style="width:52%"></div></div>
+                                        </div>
+                                        <p class="tech-desc">引天地寒气，凝结玄冰之力，冰封万物。</p>
+                                    </div>
+                                </div>
+                                <div class="tech-card-glow ice-glow"></div>
+                            </div>
+                            <div class="tech-card locked" id="techCard4">
+                                <div class="tech-card-inner">
+                                    <div class="tech-icon-wrap locked-icon">
+                                        <svg viewBox="0 0 40 40" fill="none"><rect x="10" y="18" width="20" height="16" rx="3" stroke="currentColor" stroke-width="1.2"/><path d="M14 18V12C14 8 18 4 20 4C22 4 26 8 26 12V18" stroke="currentColor" stroke-width="1.2"/></svg>
+                                    </div>
+                                    <div class="tech-info">
+                                        <h3>???</h3>
+                                        <span class="tech-grade">未知</span>
+                                        <p class="tech-desc">需要达到筑基期方可解锁此功法。</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tech-card locked" id="techCard5">
+                                <div class="tech-card-inner">
+                                    <div class="tech-icon-wrap locked-icon">
+                                        <svg viewBox="0 0 40 40" fill="none"><rect x="10" y="18" width="20" height="16" rx="3" stroke="currentColor" stroke-width="1.2"/><path d="M14 18V12C14 8 18 4 20 4C22 4 26 8 26 12V18" stroke="currentColor" stroke-width="1.2"/></svg>
+                                    </div>
+                                    <div class="tech-info">
+                                        <h3>???</h3>
+                                        <span class="tech-grade">未知</span>
+                                        <p class="tech-desc">需要完成特定任务方可解锁此功法。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 坊市页面 -->
+                <section class="tab-content" id="tabMarket" aria-labelledby="navMarket">
+                    <div class="market-layout">
+                        <div class="market-header">
+                            <div class="market-tabs">
+                                <button class="mkt-tab active" data-mkt="all">全部</button>
+                                <button class="mkt-tab" data-mkt="pill">丹药</button>
+                                <button class="mkt-tab" data-mkt="weapon">法宝</button>
+                                <button class="mkt-tab" data-mkt="material">材料</button>
+                                <button class="mkt-tab" data-mkt="technique">功法</button>
+                            </div>
+                            <div class="market-search">
+                                <input type="text" id="marketSearch" placeholder="搜索物品..." aria-label="搜索坊市物品">
+                                <button class="search-btn" aria-label="搜索">
+                                    <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="market-grid" id="marketGrid">
+                            <div class="market-item" data-category="pill" id="mktItem1">
+                                <div class="mkt-item-icon pill">
+                                    <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="currentColor" stroke-width="1.2"/><circle cx="20" cy="20" r="8" fill="currentColor" opacity="0.3"/></svg>
+                                </div>
+                                <div class="mkt-item-info">
+                                    <h4>回灵丹</h4>
+                                    <span class="mkt-grade">一品丹药</span>
+                                    <p>恢复灵力300点</p>
+                                    <div class="mkt-price">
+                                        <svg viewBox="0 0 16 16" fill="none"><polygon points="8,2 12,6 8,10 4,6" stroke="currentColor" stroke-width="1"/></polygon></svg>
+                                        <span>50 灵石</span>
+                                    </div>
+                                    <button class="btn-buy">购买</button>
+                                </div>
+                            </div>
+                            <div class="market-item" data-category="pill" id="mktItem2">
+                                <div class="mkt-item-icon rare">
+                                    <svg viewBox="0 0 40 40" fill="none"><rect x="8" y="8" width="24" height="24" rx="6" stroke="currentColor" stroke-width="1.2"/><circle cx="20" cy="20" r="7" fill="currentColor" opacity="0.3"/></svg>
+                                </div>
+                                <div class="mkt-item-info">
+                                    <h4>筑基丹</h4>
+                                    <span class="mkt-grade">三品丹药</span>
+                                    <p>大幅提升突破至筑基期的成功率</p>
+                                    <div class="mkt-price">
+                                        <svg viewBox="0 0 16 16" fill="none"><polygon points="8,2 12,6 8,10 4,6" stroke="currentColor" stroke-width="1"/></polygon></svg>
+                                        <span>800 灵石</span>
+                                    </div>
+                                    <button class="btn-buy">购买</button>
+                                </div>
+                            </div>
+                            <div class="market-item" data-category="weapon" id="mktItem3">
+                                <div class="mkt-item-icon weapon">
+                                    <svg viewBox="0 0 40 40" fill="none"><path d="M8 32L20 8L24 12L12 32H8Z" stroke="currentColor" stroke-width="1.2"/><path d="M20 8L28 4L32 10L22 18" stroke="currentColor" stroke-width="1.2"/></svg>
+                                </div>
+                                <div class="mkt-item-info">
+                                    <h4>寒冰剑</h4>
+                                    <span class="mkt-grade">中品法器</span>
+                                    <p>附带寒冰伤害，攻击力+45</p>
+                                    <div class="mkt-price">
+                                        <svg viewBox="0 0 16 16" fill="none"><polygon points="8,2 12,6 8,10 4,6" stroke="currentColor" stroke-width="1"/></polygon></svg>
+                                        <span>350 灵石</span>
+                                    </div>
+                                    <button class="btn-buy">购买</button>
+                                </div>
+                            </div>
+                            <div class="market-item" data-category="material" id="mktItem4">
+                                <div class="mkt-item-icon">
+                                    <svg viewBox="0 0 40 40" fill="none"><path d="M20 36V16C20 10 26 4 32 4C26 10 26 16 26 16" stroke="currentColor" stroke-width="1.2"/><path d="M14 16C14 16 14 10 8 4C14 4 20 10 20 16" stroke="currentColor" stroke-width="1.2"/></svg>
+                                </div>
+                                <div class="mkt-item-info">
+                                    <h4>百年灵芝</h4>
+                                    <span class="mkt-grade">灵草</span>
+                                    <p>炼丹基础材料，药性温和</p>
+                                    <div class="mkt-price">
+                                        <svg viewBox="0 0 16 16" fill="none"><polygon points="8,2 12,6 8,10 4,6" stroke="currentColor" stroke-width="1"/></polygon></svg>
+                                        <span>30 灵石</span>
+                                    </div>
+                                    <button class="btn-buy">购买</button>
+                                </div>
+                            </div>
+                            <div class="market-item" data-category="material" id="mktItem5">
+                                <div class="mkt-item-icon epic">
+                                    <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="14" stroke="currentColor" stroke-width="1.2"/><circle cx="20" cy="20" r="6" fill="currentColor" opacity="0.3"/><path d="M20 6L24 18L36 20L24 22L20 34L16 22L4 20L16 18Z" stroke="currentColor" stroke-width="0.8"/></svg>
+                                </div>
+                                <div class="mkt-item-info">
+                                    <h4>妖兽晶核</h4>
+                                    <span class="mkt-grade">稀有材料</span>
+                                    <p>蕴含妖兽精华，可用于炼制法器</p>
+                                    <div class="mkt-price">
+                                        <svg viewBox="0 0 16 16" fill="none"><polygon points="8,2 12,6 8,10 4,6" stroke="currentColor" stroke-width="1"/></polygon></svg>
+                                        <span>200 灵石</span>
+                                    </div>
+                                    <button class="btn-buy">购买</button>
+                                </div>
+                            </div>
+                            <div class="market-item" data-category="technique" id="mktItem6">
+                                <div class="mkt-item-icon technique">
+                                    <svg viewBox="0 0 40 40" fill="none"><rect x="12" y="4" width="16" height="32" rx="3" stroke="currentColor" stroke-width="1.2"/><line x1="16" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="0.8"/><line x1="16" y1="18" x2="24" y2="18" stroke="currentColor" stroke-width="0.8"/></svg>
+                                </div>
+                                <div class="mkt-item-info">
+                                    <h4>清风剑诀</h4>
+                                    <span class="mkt-grade">黄阶上品</span>
+                                    <p>剑修入门功法，剑意清风</p>
+                                    <div class="mkt-price">
+                                        <svg viewBox="0 0 16 16" fill="none"><polygon points="8,2 12,6 8,10 4,6" stroke="currentColor" stroke-width="1"/></polygon></svg>
+                                        <span>500 灵石</span>
+                                    </div>
+                                    <button class="btn-buy">购买</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 宗门页面 -->
+                <section class="tab-content" id="tabSect" aria-labelledby="navSect">
+                    <div class="sect-layout">
+                        <div class="sect-header-card">
+                            <div class="sect-emblem">
+                                <svg viewBox="0 0 64 64" fill="none">
+                                    <circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="1.2"/>
+                                    <circle cx="32" cy="32" r="18" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
+                                    <path d="M32 4L36 20H52L38 30L44 46L32 36L20 46L26 30L12 20H28Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <div class="sect-info-main">
+                                <h2 class="sect-name">太虚剑宗</h2>
+                                <span class="sect-rank">东域·二流宗门</span>
+                                <p class="sect-desc">剑道传承千年，以太虚剑诀闻名天下。宗门弟子以剑入道，追求剑道极致。</p>
+                            </div>
+                            <div class="sect-stats">
+                                <div class="sect-stat-item">
+                                    <span class="sect-stat-val">1,247</span>
+                                    <span class="sect-stat-lbl">宗门贡献</span>
+                                </div>
+                                <div class="sect-stat-item">
+                                    <span class="sect-stat-val">内门</span>
+                                    <span class="sect-stat-lbl">弟子等级</span>
+                                </div>
+                                <div class="sect-stat-item">
+                                    <span class="sect-stat-val">第84位</span>
+                                    <span class="sect-stat-lbl">战力排名</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sect-content-grid">
+                            <div class="sect-members-panel">
+                                <h3>宗门成员</h3>
+                                <div class="member-list" id="memberList">
+                                    <div class="member-item" id="member1">
+                                        <div class="member-avatar">
+                                            <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="11" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M4 28C4 22 10 18 16 18C22 18 28 22 28 28" stroke="currentColor" stroke-width="1.2"/></svg>
+                                        </div>
+                                        <div class="member-info">
+                                            <span class="member-name">云华真人</span>
+                                            <span class="member-role">宗主</span>
+                                        </div>
+                                        <span class="member-realm">元婴期</span>
+                                    </div>
+                                    <div class="member-item" id="member2">
+                                        <div class="member-avatar">
+                                            <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="11" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M4 28C4 22 10 18 16 18C22 18 28 22 28 28" stroke="currentColor" stroke-width="1.2"/></svg>
+                                        </div>
+                                        <div class="member-info">
+                                            <span class="member-name">剑尘长老</span>
+                                            <span class="member-role">传功长老</span>
+                                        </div>
+                                        <span class="member-realm">金丹期</span>
+                                    </div>
+                                    <div class="member-item" id="member3">
+                                        <div class="member-avatar">
+                                            <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="11" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M4 28C4 22 10 18 16 18C22 18 28 22 28 28" stroke="currentColor" stroke-width="1.2"/></svg>
+                                        </div>
+                                        <div class="member-info">
+                                            <span class="member-name">柳白</span>
+                                            <span class="member-role">内门弟子</span>
+                                        </div>
+                                        <span class="member-realm">筑基期</span>
+                                    </div>
+                                    <div class="member-item" id="member4">
+                                        <div class="member-avatar">
+                                            <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="11" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M4 28C4 22 10 18 16 18C22 18 28 22 28 28" stroke="currentColor" stroke-width="1.2"/></svg>
+                                        </div>
+                                        <div class="member-info">
+                                            <span class="member-name">无名修士</span>
+                                            <span class="member-role">内门弟子</span>
+                                        </div>
+                                        <span class="member-realm">练气期</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="sect-quests-panel">
+                                <h3>宗门任务</h3>
+                                <div class="quest-list" id="questList">
+                                    <div class="quest-item" id="quest1">
+                                        <div class="quest-header">
+                                            <span class="quest-name">采集灵草</span>
+                                            <span class="quest-reward">+50 贡献</span>
+                                        </div>
+                                        <p>前往后山采集十株灵草，上交炼丹堂。</p>
+                                        <button class="btn-quest">接受任务</button>
+                                    </div>
+                                    <div class="quest-item" id="quest2">
+                                        <div class="quest-header">
+                                            <span class="quest-name">除魔卫道</span>
+                                            <span class="quest-reward">+150 贡献</span>
+                                        </div>
+                                        <p>诛杀在青阳镇作乱的妖兽，保护凡人百姓。</p>
+                                        <button class="btn-quest">接受任务</button>
+                                    </div>
+                                    <div class="quest-item" id="quest3">
+                                        <div class="quest-header">
+                                            <span class="quest-name">护法值守</span>
+                                            <span class="quest-reward">+30 贡献</span>
+                                        </div>
+                                        <p>在宗门大阵值守四个时辰，确保阵法运转。</p>
+                                        <button class="btn-quest">接受任务</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- 底部交互栏 -->
+        <footer id="bottomBar">
+            <div class="llm-bar" id="llmBar">
+                <div class="llm-input-wrap">
+                    <button class="llm-mode-btn" id="btnLlmMode" title="切换对话模式" aria-label="切换对话模式">
+                        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="19" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+                    </button>
+                    <input type="text" id="llmInput" class="llm-input" placeholder="输入你的行动..." aria-label="输入行动指令">
+                    <button class="llm-send-btn" id="btnLlmSend" aria-label="发送指令">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+                <div class="llm-history" id="llmHistory">
+                    <div class="llm-msg system-msg">
+                        <span class="msg-sender">系统</span>
+                        <span class="msg-text">欢迎来到修仙世界。你是一名初入道途的修士，前方是漫漫仙途。</span>
+                    </div>
+                </div>
+                <button class="llm-toggle" id="btnLlmToggle" aria-label="展开/收起对话记录">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M18 15L12 9L6 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </footer>
+
+        <!-- 通知区域 -->
+        <div id="notificationArea" aria-live="polite" aria-label="通知区域"></div>
+    </div>
+
+    <!-- 模态框容器 -->
+    <!-- 物品详情模态框 -->
+    <dialog class="modal" id="modalItemDetail" aria-labelledby="modalItemTitle">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalItemTitle">物品详情</h2>
+                <button class="modal-close" aria-label="关闭对话框">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <div class="modal-body" id="modalItemBody"></div>
+        </div>
+    </dialog>
+
+    <!-- 确认对话框 -->
+    <dialog class="modal" id="modalConfirm" aria-labelledby="modalConfirmTitle">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2 id="modalConfirmTitle">确认操作</h2>
+                <button class="modal-close" aria-label="关闭对话框">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <div class="modal-body" id="modalConfirmBody"></div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="btnConfirmCancel">取消</button>
+                <button class="btn-primary" id="btnConfirmOk">确认</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- 突破动画模态框 -->
+    <dialog class="modal modal-cinematic" id="modalBreakthroughCinematic" aria-label="境界突破">
+        <div class="cinematic-content" id="cinematicContent">
+            <div class="cinematic-sky" id="cinematicSky">
+                <div class="tribulation-clouds"></div>
+                <div class="tribulation-lightning"></div>
+            </div>
+            <div class="cinematic-text" id="cinematicText"></div>
+        </div>
+    </dialog>
+
+    <!-- 设置模态框 -->
+    <dialog class="modal" id="modalSettings" aria-labelledby="modalSettingsTitle">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2 id="modalSettingsTitle">设置</h2>
+                <button class="modal-close" aria-label="关闭对话框">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-row">
+                    <span>粒子特效</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="settingParticles" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>动画效果</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="settingAnimations" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>音效（开发中）</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="settingSound" disabled>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1526 @@
+/**
+ * 修仙世界 · 太虚之境 — 应用逻辑
+ * 东方玄幻修仙网页游戏前端原型
+ */
+(function () {
+    'use strict';
+
+    /* ================================
+       游戏状态
+       ================================ */
+    const GameState = {
+        player: {
+            name: '无名修士',
+            realm: '炼气期',
+            realmTier: 3,
+            realmIndex: 0,
+            hp: 500,
+            maxHp: 500,
+            qi: 380,
+            maxQi: 500,
+            spirit: 48,
+            body: 55,
+            attack: 45,
+            defense: 30,
+            spiritStones: 1280,
+            cultivationProgress: 72,
+            cultivationRate: 12.5,
+            cultivationTime: 12240,
+            isCultivating: false,
+            stamina: 100,
+            maxStamina: 100,
+            staminaPerTurn: 10,
+            elements: { 金: 72, 木: 45, 水: 88, 火: 60, 土: 35 }
+        },
+        enemy: {
+            name: '妖兽·赤炎虎',
+            realm: '练气期六层',
+            hp: 800,
+            maxHp: 800,
+            attack: 62,
+            defense: 25
+        },
+        turn: 1,
+        month: 1,
+        year: 1,
+        combatActive: false,
+        cultivationInterval: null,
+        settings: {
+            particles: true,
+            animations: true
+        }
+    };
+
+    const REALMS = [
+        { name: '炼气期', tiers: ['一层', '二层', '三层', '四层', '五层', '六层', '七层', '八层', '九层'] },
+        { name: '筑基期', tiers: ['初期', '中期', '后期', '圆满'] },
+        { name: '金丹期', tiers: ['初期', '中期', '后期', '圆满'] },
+        { name: '元婴期', tiers: ['初期', '中期', '后期', '圆满'] },
+        { name: '化神期', tiers: ['初期', '中期', '后期', '圆满'] },
+        { name: '合体期', tiers: ['初期', '中期', '后期', '圆满'] },
+        { name: '大乘期', tiers: ['初期', '中期', '后期', '圆满'] },
+        { name: '渡劫期', tiers: ['初期', '中期', '后期', '圆满'] },
+        { name: '真仙境', tiers: ['初期', '中期', '后期', '圆满'] }
+    ];
+
+    /* ================================
+       DOM 引用缓存
+       ================================ */
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    const DOM = {
+        particleCanvas: $('#particleCanvas'),
+        appContainer: $('#appContainer'),
+        navItems: $$('.nav-item'),
+        tabContents: $$('.tab-content'),
+        realmName: $('#realmName'),
+        realmTier: $('#realmTier'),
+        spiritStones: $('#spiritStones').querySelector('.status-value'),
+        qiValue: $('#qiValue'),
+        staminaValue: $('#staminaValue'),
+        staminaDisplay: $('#staminaDisplay'),
+        btnNextTurn: $('#btnNextTurn'),
+        btnSettings: $('#btnSettings'),
+        modalSettings: $('#modalSettings'),
+
+        // Cultivation
+        cultTitle: $('#cultTitle'),
+        cultDesc: $('#cultDesc'),
+        cultPercent: $('#cultPercent'),
+        cultProgressBar: $('#cultProgressBar'),
+        cultRate: $('#cultRate'),
+        cultTime: $('#cultTime'),
+        cultBonus: $('#cultBonus'),
+        btnCultivate: $('#btnCultivate'),
+        btnCultivateText: $('#btnCultivateText'),
+        cultVortex: $('#cultVortex'),
+        miniQi: $('#miniQi'),
+        miniSpirit: $('#miniSpirit'),
+        miniBody: $('#miniBody'),
+
+        // Combat
+        enemyName: $('#enemyName'),
+        enemyRealm: $('#enemyRealm'),
+        enemyHpBar: $('#enemyHpBar'),
+        enemyHpText: $('#enemyHpText'),
+        playerRealm: $('#playerRealm'),
+        playerHpBar: $('#playerHpBar'),
+        playerHpText: $('#playerHpText'),
+        combatLog: $('#combatLog'),
+        btnAttack: $('#btnAttack'),
+        btnSkill1: $('#btnSkill1'),
+        btnSkill2: $('#btnSkill2'),
+        btnDefend: $('#btnDefend'),
+
+        // Breakthrough
+        btCurRealm: $('#btCurRealm'),
+        btCurTier: $('#btCurTier'),
+        btNextRealm: $('#btNextRealm'),
+        btSuccessRate: $('#btSuccessRate'),
+        btnBreakthrough: $('#btnBreakthrough'),
+        tribulationGauge: $('#tribulationGauge'),
+        modalBtCinematic: $('#modalBreakthroughCinematic'),
+        cinematicText: $('#cinematicText'),
+
+        // Modals
+        modalItemDetail: $('#modalItemDetail'),
+        modalItemTitle: $('#modalItemTitle'),
+        modalItemBody: $('#modalItemBody'),
+        modalConfirm: $('#modalConfirm'),
+        modalConfirmTitle: $('#modalConfirmTitle'),
+        modalConfirmBody: $('#modalConfirmBody'),
+        btnConfirmCancel: $('#btnConfirmCancel'),
+        btnConfirmOk: $('#btnConfirmOk'),
+
+        // LLM
+        llmBar: $('#llmBar'),
+        llmInput: $('#llmInput'),
+        llmHistory: $('#llmHistory'),
+        btnLlmSend: $('#btnLlmSend'),
+        btnLlmToggle: $('#btnLlmToggle'),
+        btnLlmMode: $('#btnLlmMode'),
+
+        // Market
+        marketGrid: $('#marketGrid'),
+        marketSearch: $('#marketSearch'),
+        mktTabs: $$('.mkt-tab'),
+
+        // Inventory
+        inventoryGrid: $('#inventoryGrid'),
+        equipSlots: $$('.equip-slot'),
+
+        // Settings
+        settingParticles: $('#settingParticles'),
+        settingAnimations: $('#settingAnimations')
+    };
+
+    /* ================================
+       粒子背景系统 (Canvas)
+       ================================ */
+    const ParticleSystem = {
+        canvas: DOM.particleCanvas,
+        ctx: null,
+        particles: [],
+        maxParticles: 50,
+        animationId: null,
+
+        init() {
+            this.ctx = this.canvas.getContext('2d');
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+            this.createParticles();
+            this.animate();
+        },
+
+        resize() {
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+        },
+
+        createParticles() {
+            this.particles = [];
+            for (let i = 0; i < this.maxParticles; i++) {
+                this.particles.push({
+                    x: Math.random() * this.canvas.width,
+                    y: Math.random() * this.canvas.height,
+                    size: Math.random() * 2 + 0.5,
+                    speedX: (Math.random() - 0.5) * 0.4,
+                    speedY: (Math.random() - 0.5) * 0.4 - 0.2,
+                    opacity: Math.random() * 0.5 + 0.15,
+                    pulseSpeed: Math.random() * 0.02 + 0.01,
+                    pulseOffset: Math.random() * Math.PI * 2,
+                    hue: Math.random() < 0.15 ? 40 : 220 + Math.random() * 20
+                });
+            }
+        },
+
+        animate() {
+            if (!GameState.settings.particles) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.animationId = requestAnimationFrame(() => this.animate());
+                return;
+            }
+
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            for (const p of this.particles) {
+                p.x += p.speedX;
+                p.y += p.speedY;
+                p.pulseOffset += p.pulseSpeed;
+
+                if (p.x < -10) p.x = this.canvas.width + 10;
+                if (p.x > this.canvas.width + 10) p.x = -10;
+                if (p.y < -10) p.y = this.canvas.height + 10;
+                if (p.y > this.canvas.height + 10) p.y = -10;
+
+                const alpha = p.opacity + Math.sin(p.pulseOffset) * 0.15;
+                const hueStr = p.hue < 60 ? `hsla(${p.hue}, 60%, 65%, ${alpha})` : `hsla(${p.hue}, 50%, 55%, ${alpha})`;
+
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                this.ctx.fillStyle = hueStr;
+                this.ctx.fill();
+
+                if (p.size > 1.2) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+                    this.ctx.fillStyle = `hsla(${p.hue}, 50%, 50%, ${alpha * 0.12})`;
+                    this.ctx.fill();
+                }
+            }
+
+            this.animationId = requestAnimationFrame(() => this.animate());
+        },
+
+        toggle(enabled) {
+            GameState.settings.particles = enabled;
+            if (!enabled) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+        }
+    };
+
+    /* ================================
+       通知系统
+       ================================ */
+    const NotificationSystem = {
+        container: $('#notificationArea'),
+        maxVisible: 4,
+        queue: [],
+        activeIds: 0,
+
+        show(title, message, type = 'info', duration = 4000) {
+            const id = ++this.activeIds;
+
+            if (this.container.children.length >= this.maxVisible) {
+                const oldest = this.container.lastElementChild;
+                if (oldest) this.remove(oldest);
+            }
+
+            const icons = {
+                success: '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+                warning: '<path d="M12 2L2 22H22L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 10V14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="18" r="1" fill="currentColor"/>',
+                error: '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M8 8L16 16M16 8L8 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+                info: '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M12 8V12M12 16V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+            };
+
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.id = `notif-${id}`;
+            notif.style.animationDuration = '350ms';
+            notif.innerHTML = `
+                <svg class="notif-icon" viewBox="0 0 24 24" fill="none">${icons[type] || icons.info}</svg>
+                <div class="notif-content">
+                    <div class="notif-title">${title}</div>
+                    <div class="notif-message">${message}</div>
+                </div>
+                <button class="notif-close" aria-label="关闭通知" data-notif-id="${id}">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+                <div class="notif-timer" style="animation-duration:${duration}ms"></div>
+            `;
+
+            this.container.insertBefore(notif, this.container.firstChild);
+
+            const closeBtn = notif.querySelector('.notif-close');
+            closeBtn.addEventListener('click', () => this.remove(notif));
+
+            const timer = setTimeout(() => this.remove(notif), duration);
+            notif._timer = timer;
+
+            return id;
+        },
+
+        remove(notif) {
+            if (!notif || notif.classList.contains('removing')) return;
+            clearTimeout(notif._timer);
+            notif.classList.add('removing');
+            notif.addEventListener('animationend', () => {
+                if (notif.parentNode) notif.parentNode.removeChild(notif);
+            }, { once: true });
+        },
+
+        success(title, msg, dur) { return this.show(title, msg, 'success', dur); },
+        warning(title, msg, dur) { return this.show(title, msg, 'warning', dur); },
+        error(title, msg, dur) { return this.show(title, msg, 'error', dur); },
+        info(title, msg, dur) { return this.show(title, msg, 'info', dur); }
+    };
+
+    /* ================================
+       模态框管理
+       ================================ */
+    const ModalManager = {
+        open(modalEl) {
+            if (!modalEl) return;
+            modalEl.showModal();
+            document.body.style.overflow = 'hidden';
+
+            const backdrop = modalEl.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.addEventListener('click', () => this.close(modalEl), { once: true });
+            }
+
+            const closeBtn = modalEl.querySelector('.modal-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => this.close(modalEl), { once: true });
+            }
+
+            modalEl.addEventListener('click', (e) => {
+                if (e.target === modalEl) this.close(modalEl);
+            }, { once: true });
+
+            modalEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') this.close(modalEl);
+            }, { once: true });
+        },
+
+        close(modalEl) {
+            if (!modalEl || !modalEl.open) return;
+            modalEl.close();
+            document.body.style.overflow = '';
+        },
+
+        showItemDetail(itemData) {
+            DOM.modalItemTitle.textContent = itemData.name;
+            DOM.modalItemBody.innerHTML = `
+                <div class="modal-item-detail">
+                    <div class="modal-item-icon-lg" style="color:${itemData.color || 'var(--gold)'}">
+                        ${itemData.icon || ''}
+                    </div>
+                    <div class="modal-item-info-detail">
+                        <h3>${itemData.name}</h3>
+                        <span class="item-grade">${itemData.grade || ''}</span>
+                        <p class="item-desc">${itemData.desc || '一件修仙界的宝物。'}</p>
+                        ${itemData.stats ? `<div class="item-stats">${itemData.stats.map(s => `<span>${s}</span>`).join('')}</div>` : ''}
+                    </div>
+                </div>
+            `;
+            this.open(DOM.modalItemDetail);
+        },
+
+        showConfirm(title, message, onConfirm) {
+            DOM.modalConfirmTitle.textContent = title;
+            DOM.modalConfirmBody.innerHTML = `<p style="color:var(--text-secondary);line-height:1.7">${message}</p>`;
+
+            const cleanup = () => {
+                DOM.btnConfirmOk.removeEventListener('click', handleConfirm);
+                DOM.btnConfirmCancel.removeEventListener('click', handleCancel);
+            };
+
+            const handleConfirm = () => {
+                cleanup();
+                this.close(DOM.modalConfirm);
+                if (onConfirm) onConfirm();
+            };
+
+            const handleCancel = () => {
+                cleanup();
+                this.close(DOM.modalConfirm);
+            };
+
+            DOM.btnConfirmOk.addEventListener('click', handleConfirm);
+            DOM.btnConfirmCancel.addEventListener('click', handleCancel);
+
+            this.open(DOM.modalConfirm);
+        }
+    };
+
+    /* ================================
+       涟漪效果
+       ================================ */
+    function createRipple(e, el) {
+        const ripple = document.createElement('span');
+        ripple.className = 'ripple';
+        const rect = el.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        ripple.style.width = ripple.style.height = `${size}px`;
+        ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+        ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+        el.style.position = el.style.position || 'relative';
+        el.style.overflow = 'hidden';
+        el.appendChild(ripple);
+        ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+    }
+
+    /* ================================
+       标签页导航
+       ================================ */
+    function switchTab(tabName) {
+        DOM.tabContents.forEach(tc => tc.classList.remove('active'));
+        DOM.navItems.forEach(ni => {
+            ni.classList.remove('active');
+            ni.removeAttribute('aria-current');
+        });
+
+        const tabContent = document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+        const navBtn = document.getElementById(`nav${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+
+        if (tabContent) tabContent.classList.add('active');
+        if (navBtn) {
+            navBtn.classList.add('active');
+            navBtn.setAttribute('aria-current', 'page');
+        }
+
+        // Re-trigger animation
+        if (tabContent) {
+            tabContent.style.animation = 'none';
+            tabContent.offsetHeight;
+            tabContent.style.animation = '';
+        }
+    }
+
+    DOM.navItems.forEach(item => {
+        item.addEventListener('click', function (e) {
+            const tab = this.dataset.tab;
+            if (tab) switchTab(tab);
+            createRipple(e, this);
+        });
+    });
+
+    /* ================================
+       修炼系统
+       ================================ */
+    function updateCultivationUI() {
+        const p = GameState.player;
+        DOM.realmName.textContent = p.realm;
+        DOM.realmTier.textContent = REALMS[p.realmIndex]?.tiers[p.realmTier - 1] || '';
+        DOM.spiritStones.textContent = p.spiritStones.toLocaleString();
+        DOM.qiValue.textContent = p.qi;
+        DOM.cultPercent.textContent = `${p.cultivationProgress}%`;
+        DOM.cultProgressBar.style.width = `${p.cultivationProgress}%`;
+        DOM.cultRate.textContent = `${p.cultivationRate}/秒`;
+        DOM.cultBonus.textContent = `+${Math.round((p.elements.水 + p.elements.金) / 3)}%`;
+
+        const hours = Math.floor(p.cultivationTime / 3600);
+        const mins = Math.floor((p.cultivationTime % 3600) / 60);
+        DOM.cultTime.textContent = `${hours}时${mins}分`;
+
+        DOM.miniQi.style.width = `${(p.qi / p.maxQi) * 100}%`;
+        DOM.miniSpirit.style.width = `${p.spirit}%`;
+        DOM.miniBody.style.width = `${p.body}%`;
+
+        DOM.playerRealm.textContent = `${p.realm}${REALMS[p.realmIndex]?.tiers[p.realmTier - 1] || ''}`;
+        DOM.playerHpText.textContent = `${p.hp}/${p.maxHp}`;
+        DOM.playerHpBar.style.width = `${(p.hp / p.maxHp) * 100}%`;
+
+        // Update breakthrough tab
+        DOM.btCurRealm.textContent = p.realm;
+        DOM.btCurTier.textContent = REALMS[p.realmIndex]?.tiers[p.realmTier - 1] || '';
+        const nextRealmIdx = Math.min(p.realmIndex + 1, REALMS.length - 1);
+        DOM.btNextRealm.textContent = REALMS[nextRealmIdx]?.name || '真仙境';
+        DOM.btSuccessRate.textContent = `${Math.min(95, 40 + p.cultivationProgress / 2 + (p.spirit + p.body) / 5)}%`;
+
+        // Update stamina display
+        DOM.staminaValue.textContent = p.stamina;
+        const staminaRatio = p.stamina / p.maxStamina;
+        if (staminaRatio <= 0.15) {
+            DOM.staminaDisplay.classList.add('low-stamina');
+        } else {
+            DOM.staminaDisplay.classList.remove('low-stamina');
+        }
+
+        // Update abode stats panel
+        updateAbodeStats();
+    }
+
+    function updateAbodeStats() {
+        const p = GameState.player;
+        const statHp = document.getElementById('statHp');
+        const statQi = document.getElementById('statQi');
+        const statAtk = document.getElementById('statAtk');
+        const statDef = document.getElementById('statDef');
+        const statSpirit = document.getElementById('statSpirit');
+        const statBody = document.getElementById('statBody');
+        const invCap = document.getElementById('invCapacity');
+
+        if (statHp) statHp.textContent = p.hp;
+        if (statQi) statQi.textContent = p.qi;
+        if (statAtk) statAtk.textContent = p.attack;
+        if (statDef) statDef.textContent = p.defense;
+        if (statSpirit) statSpirit.textContent = Math.round(p.spirit);
+        if (statBody) statBody.textContent = Math.round(p.body);
+        if (invCap) invCap.textContent = '16/24';
+
+        // Update stat bars in abode
+        const hpBar = document.querySelector('.s-fill.hp-fill-stat');
+        const qiBar = document.querySelector('.s-fill.qi-fill-stat');
+        if (hpBar) hpBar.style.width = `${(p.hp / p.maxHp) * 100}%`;
+        if (qiBar) qiBar.style.width = `${(p.qi / p.maxQi) * 100}%`;
+    }
+
+    /* ================================
+       体力系统
+       ================================ */
+    function consumeStamina(amount, actionName) {
+        const p = GameState.player;
+        if (p.stamina < amount) {
+            NotificationSystem.warning('体力不足', `体力不足，无法${actionName}。需要 ${amount} 体力，当前仅剩 ${p.stamina} 点。下月将自动回复。`);
+            return false;
+        }
+        p.stamina -= amount;
+        updateCultivationUI();
+
+        // Flash the stamina display
+        DOM.staminaDisplay.classList.add('stamina-consume-flash');
+        DOM.staminaDisplay.addEventListener('animationend', () => {
+            DOM.staminaDisplay.classList.remove('stamina-consume-flash');
+        }, { once: true });
+
+        return true;
+    }
+
+    function advanceTurn() {
+        const gs = GameState;
+        const p = gs.player;
+
+        // Stop cultivation if active
+        if (p.isCultivating) {
+            toggleCultivation();
+        }
+
+        // Advance time
+        gs.turn++;
+        gs.month++;
+        if (gs.month > 12) {
+            gs.month = 1;
+            gs.year++;
+        }
+
+        // Recover stamina
+        const recovered = p.staminaPerTurn;
+        p.stamina = Math.min(p.maxStamina, p.stamina + recovered);
+
+        // Natural recovery
+        p.hp = Math.min(p.maxHp, Math.round(p.hp + p.maxHp * 0.05));
+        p.qi = Math.min(p.maxQi, Math.round(p.qi + p.maxQi * 0.08));
+
+        // Increment cultivation time
+        p.cultivationTime += 3600;
+
+        // Slight passive gains
+        if (Math.random() < 0.2) {
+            p.spirit = Math.min(100, p.spirit + 0.5);
+        }
+        if (Math.random() < 0.15) {
+            p.body = Math.min(100, p.body + 0.3);
+        }
+
+        updateCultivationUI();
+        updateCombatUI();
+
+        const season = gs.month <= 3 ? '春' : gs.month <= 6 ? '夏' : gs.month <= 9 ? '秋' : '冬';
+        NotificationSystem.info(
+            `第 ${gs.turn} 回合 · ${season}`,
+            `修仙历 ${gs.year}年${gs.month}月。体力恢复 +${recovered}（当前 ${p.stamina}/${p.maxStamina}）。`,
+            4000
+        );
+    }
+
+    function toggleCultivation() {
+        const p = GameState.player;
+
+        if (p.isCultivating) {
+            // 停止修炼
+            p.isCultivating = false;
+            DOM.cultVortex.classList.remove('cultivating');
+            DOM.btnCultivate.classList.remove('active-cultivating');
+            DOM.btnCultivateText.textContent = '开始修炼';
+            if (GameState.cultivationInterval) {
+                clearInterval(GameState.cultivationInterval);
+                GameState.cultivationInterval = null;
+            }
+            DOM.cultDesc.textContent = '吸纳天地灵气，淬炼己身，感悟大道至理。';
+            NotificationSystem.info('修炼中止', '你停止了修炼，灵气漩涡逐渐平息。');
+        } else {
+            // 开始修炼 — 消耗体力
+            if (!consumeStamina(15, '开始修炼')) return;
+            p.isCultivating = true;
+            DOM.cultVortex.classList.add('cultivating');
+            DOM.btnCultivate.classList.add('active-cultivating');
+            DOM.btnCultivateText.textContent = '停止修炼';
+            DOM.cultDesc.textContent = '灵气汇聚于丹田，周身经络运转，天地之力正在淬炼你的肉身...';
+            NotificationSystem.success('开始修炼', '你盘膝而坐，引导天地灵气入体。修炼中...');
+
+            GameState.cultivationInterval = setInterval(() => {
+                p.cultivationTime += 1;
+                p.qi = Math.min(p.maxQi, p.qi + p.cultivationRate * 0.1);
+
+                const progressGain = p.cultivationRate * 0.008;
+                p.cultivationProgress = Math.min(100, p.cultivationProgress + progressGain);
+
+                if (Math.random() < 0.001) {
+                    p.spirit = Math.min(100, p.spirit + 0.1);
+                    p.body = Math.min(100, p.body + 0.08);
+                }
+
+                updateCultivationUI();
+
+                if (p.cultivationProgress >= 100) {
+                    p.cultivationProgress = 100;
+                    toggleCultivation();
+                    NotificationSystem.warning('修炼瓶颈', '当前境界修炼已达圆满，请尽快突破！', 6000);
+                }
+            }, 1000);
+        }
+    }
+
+    DOM.btnCultivate.addEventListener('click', (e) => {
+        toggleCultivation();
+        createRipple(e, DOM.btnCultivate);
+    });
+
+    /* ================================
+       战斗系统
+       ================================ */
+    function updateCombatUI() {
+        const p = GameState.player;
+        const e = GameState.enemy;
+
+        DOM.enemyHpBar.style.width = `${(e.hp / e.maxHp) * 100}%`;
+        DOM.enemyHpText.textContent = `${Math.max(0, Math.round(e.hp))}/${e.maxHp}`;
+        DOM.playerHpBar.style.width = `${(p.hp / p.maxHp) * 100}%`;
+        DOM.playerHpText.textContent = `${Math.max(0, Math.round(p.hp))}/${p.maxHp}`;
+    }
+
+    function addCombatLog(message, type = 'system') {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.innerHTML = message;
+        DOM.combatLog.appendChild(entry);
+        DOM.combatLog.scrollTop = DOM.combatLog.scrollHeight;
+    }
+
+    function getCombatDamage(attacker, defender, skillMultiplier = 1) {
+        const baseDmg = attacker.attack * skillMultiplier;
+        const reduction = defender.defense * 0.4;
+        const variance = 0.85 + Math.random() * 0.3;
+        return Math.max(5, Math.round((baseDmg - reduction) * variance));
+    }
+
+    function playerAttack(skillName, skillMultiplier, skillColor) {
+        if (!GameState.combatActive) return;
+        const p = GameState.player;
+        const e = GameState.enemy;
+
+        if (p.hp <= 0 || e.hp <= 0) return;
+
+        const dmg = getCombatDamage(p, e, skillMultiplier);
+        e.hp = Math.max(0, e.hp - dmg);
+        updateCombatUI();
+
+        const critText = dmg > getCombatDamage(p, e, skillMultiplier) * 1.3 ? ' — 会心一击！' : '';
+        addCombatLog(`你使出 <span style="color:${skillColor || 'var(--spirit)'}">${skillName}</span>，造成 <span class="highlight">${dmg}</span> 点伤害${critText}`, 'player-action');
+
+        if (e.hp <= 0) {
+            endCombat(true);
+            return;
+        }
+
+        setTimeout(enemyTurn, 800 + Math.random() * 600);
+    }
+
+    function enemyTurn() {
+        if (!GameState.combatActive) return;
+        const p = GameState.player;
+        const e = GameState.enemy;
+
+        if (p.hp <= 0 || e.hp <= 0) return;
+
+        const skills = [
+            { name: '利爪撕裂', mult: 1, color: 'var(--cinnabar)' },
+            { name: '烈焰吐息', mult: 1.5, color: 'var(--flame)' },
+            { name: '猛扑', mult: 1.2, color: 'var(--cinnabar)' }
+        ];
+        const skill = skills[Math.floor(Math.random() * skills.length)];
+        const dmg = getCombatDamage(e, p, skill.mult);
+        p.hp = Math.max(0, p.hp - dmg);
+        updateCombatUI();
+
+        addCombatLog(`<span style="color:var(--cinnabar)">${e.name}</span> 使用 <span style="color:${skill.color}">${skill.name}</span>，对你造成 <span class="highlight">${dmg}</span> 点伤害`, 'enemy-action');
+
+        if (p.hp <= 0) {
+            endCombat(false);
+        }
+    }
+
+    function startCombat() {
+        if (GameState.combatActive) return;
+        if (!consumeStamina(5, '进入战斗')) return;
+        GameState.combatActive = true;
+
+        // Reset enemy
+        const e = GameState.enemy;
+        e.hp = e.maxHp;
+
+        DOM.combatLog.innerHTML = '';
+        updateCombatUI();
+        addCombatLog(`战斗开始！你遭遇了 <span class="highlight">${e.name}</span>（${e.realm}）`);
+        addCombatLog('妖兽率先发起攻击！', 'system');
+
+        setCombatButtonsEnabled(true);
+
+        setTimeout(enemyTurn, 1200);
+        NotificationSystem.warning('进入战斗', `你遭遇了 ${e.name}！准备迎战！`);
+    }
+
+    function endCombat(victory) {
+        GameState.combatActive = false;
+        setCombatButtonsEnabled(false);
+
+        if (victory) {
+            addCombatLog('战斗胜利！妖兽化为灵气消散于天地间。', 'victory');
+            const reward = 50 + Math.floor(Math.random() * 80);
+            GameState.player.spiritStones += reward;
+            GameState.player.spirit = Math.min(100, GameState.player.spirit + 1);
+            updateCultivationUI();
+            NotificationSystem.success('战斗胜利', `你击败了 ${GameState.enemy.name}！获得 ${reward} 灵石。`);
+        } else {
+            addCombatLog('你被击败了...意识逐渐模糊...', 'enemy-action');
+            GameState.player.hp = Math.round(GameState.player.maxHp * 0.3);
+            updateCultivationUI();
+            NotificationSystem.error('战斗失败', '你被妖兽击败，灵力耗尽，修为受损。');
+        }
+    }
+
+    function setCombatButtonsEnabled(enabled) {
+        [DOM.btnAttack, DOM.btnSkill1, DOM.btnSkill2, DOM.btnDefend].forEach(btn => {
+            btn.disabled = !enabled;
+            btn.style.opacity = enabled ? '1' : '0.5';
+            btn.style.pointerEvents = enabled ? 'auto' : 'none';
+        });
+    }
+
+    DOM.btnAttack.addEventListener('click', (e) => {
+        if (!GameState.combatActive) { startCombat(); return; }
+        if (!consumeStamina(8, '普通攻击')) return;
+        playerAttack('普通攻击', 1, 'var(--spirit)');
+        createRipple(e, DOM.btnAttack);
+    });
+
+    DOM.btnSkill1.addEventListener('click', (e) => {
+        if (!GameState.combatActive) { startCombat(); return; }
+        if (!consumeStamina(10, '使用玄冰咒')) return;
+        playerAttack('玄冰咒', 1.8, 'var(--ice)');
+        createRipple(e, DOM.btnSkill1);
+    });
+
+    DOM.btnSkill2.addEventListener('click', (e) => {
+        if (!GameState.combatActive) { startCombat(); return; }
+        if (!consumeStamina(12, '使用烈焰掌')) return;
+        playerAttack('烈焰掌', 2.0, 'var(--flame)');
+        createRipple(e, DOM.btnSkill2);
+    });
+
+    DOM.btnDefend.addEventListener('click', (e) => {
+        if (!GameState.combatActive) { startCombat(); return; }
+        if (!consumeStamina(5, '防御')) return;
+        const p = GameState.player;
+        p.defense = Math.round(p.defense * 1.8);
+        addCombatLog('你凝神防御，护体真气流转全身。', 'player-action');
+        setTimeout(() => {
+            p.defense = 30;
+            addCombatLog('防御状态解除。', 'system');
+        }, 3000);
+        setTimeout(enemyTurn, 800);
+        createRipple(e, DOM.btnDefend);
+    });
+
+    // Initialize combat buttons as disabled
+    setCombatButtonsEnabled(false);
+
+    /* ================================
+       突破系统
+       ================================ */
+    function triggerBreakthrough() {
+        const p = GameState.player;
+
+        if (p.cultivationProgress < 100) {
+            NotificationSystem.warning('修为不足', '你需要将修炼进度提升至100%方可尝试突破。');
+            return;
+        }
+
+        if (!consumeStamina(25, '突破境界')) return;
+
+        if (p.isCultivating) {
+            toggleCultivation();
+        }
+
+        const successRate = 40 + (p.spirit + p.body) / 5;
+        const success = Math.random() * 100 < successRate;
+
+        // Show cinematic
+        DOM.modalBtCinematic.showModal();
+        document.body.style.overflow = 'hidden';
+        DOM.cinematicText.textContent = '';
+        DOM.cinematicText.style.animation = 'none';
+        DOM.cinematicText.offsetHeight;
+
+        // Phase 1: 天劫降临
+        setTimeout(() => {
+            DOM.cinematicText.style.animation = '';
+            DOM.cinematicText.textContent = '天劫降临';
+            DOM.cinematicText.style.color = '#c9a0f0';
+        }, 300);
+
+        // Phase 2: 结果
+        setTimeout(() => {
+            if (success) {
+                DOM.cinematicText.textContent = '突破成功';
+                DOM.cinematicText.style.color = 'var(--gold-light)';
+                DOM.cinematicText.style.animation = 'none';
+                DOM.cinematicText.offsetHeight;
+                DOM.cinematicText.style.animation = 'cinematicTextIn 1.5s var(--ease-out-expo)';
+            } else {
+                DOM.cinematicText.textContent = '渡劫失败';
+                DOM.cinematicText.style.color = 'var(--cinnabar)';
+                DOM.cinematicText.style.animation = 'none';
+                DOM.cinematicText.offsetHeight;
+                DOM.cinematicText.style.animation = 'cinematicTextIn 1.5s var(--ease-out-expo)';
+            }
+        }, 2000);
+
+        // Phase 3: 关闭并处理结果
+        setTimeout(() => {
+            DOM.modalBtCinematic.close();
+            document.body.style.overflow = '';
+
+            if (success) {
+                handleBreakthroughSuccess();
+            } else {
+                handleBreakthroughFailure();
+            }
+        }, 4000);
+    }
+
+    function handleBreakthroughSuccess() {
+        const p = GameState.player;
+        p.realmTier++;
+
+        if (p.realmTier > REALMS[p.realmIndex].tiers.length) {
+            p.realmIndex = Math.min(p.realmIndex + 1, REALMS.length - 1);
+            p.realmTier = 1;
+            p.realm = REALMS[p.realmIndex].name;
+        }
+
+        p.cultivationProgress = 0;
+        p.maxHp = Math.round(p.maxHp * 1.4);
+        p.hp = p.maxHp;
+        p.maxQi = Math.round(p.maxQi * 1.3);
+        p.qi = p.maxQi;
+        p.attack = Math.round(p.attack * 1.3);
+        p.defense = Math.round(p.defense * 1.2);
+        p.spirit = Math.min(100, p.spirit + 8);
+        p.body = Math.min(100, p.body + 6);
+
+        updateCultivationUI();
+        updateCombatUI();
+
+        const realmFull = `${p.realm}${REALMS[p.realmIndex]?.tiers[p.realmTier - 1] || ''}`;
+        NotificationSystem.success('境界突破成功！', `你成功突破至 ${realmFull}！实力大幅提升！`, 6000);
+    }
+
+    function handleBreakthroughFailure() {
+        const p = GameState.player;
+        p.cultivationProgress = Math.max(0, p.cultivationProgress - 25);
+        p.hp = Math.round(p.maxHp * 0.3);
+        p.qi = Math.round(p.maxQi * 0.4);
+
+        updateCultivationUI();
+        updateCombatUI();
+
+        NotificationSystem.error('突破失败', '天劫之力远超预期，突破失败。修为受损，需重新积累。', 6000);
+    }
+
+    DOM.btnBreakthrough.addEventListener('click', (e) => {
+        createRipple(e, DOM.btnBreakthrough);
+        ModalManager.showConfirm(
+            '确认突破',
+            `你即将尝试突破境界。成功率约为 <span style="color:var(--gold-light);font-weight:600">${DOM.btSuccessRate.textContent}</span>。<br><br>失败将导致修为受损，修炼进度倒退。是否继续？`,
+            () => triggerBreakthrough()
+        );
+    });
+
+    // Close cinematic on click
+    DOM.modalBtCinematic.addEventListener('click', () => {
+        if (!DOM.modalBtCinematic.open) return;
+        DOM.modalBtCinematic.close();
+        document.body.style.overflow = '';
+    });
+
+    /* ================================
+       洞府 / 装备与物品交互
+       ================================ */
+
+    // 扩展物品数据
+    const itemDataMap = {
+        // 装备
+        ironSword: {
+            name: '青锋剑', grade: '中品法器', category: 'equipment', slot: 'weapon',
+            color: 'var(--gold)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><path d="M6 26L16 6L20 10L10 26H6Z" stroke="currentColor" stroke-width="1.2"/><path d="M16 6L24 2L28 8L18 14" stroke="currentColor" stroke-width="1.2"/></svg>',
+            desc: '以玄铁锻造的利剑，剑身泛着幽幽寒光。虽非神兵，却也锋利无匹。',
+            stats: ['攻击力 +18', '锋利度：中', '需要修为：炼气期三层']
+        },
+        cloudBoots: {
+            name: '流云靴', grade: '下品法器', category: 'equipment', slot: 'boots',
+            color: 'var(--spirit)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><path d="M8 24L16 14L24 24" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            desc: '绘制了轻身符文的靴子，穿上后身轻如燕，步若流云。',
+            stats: ['移动速度 +10%', '闪避 +5%', '需要修为：炼气期二层']
+        },
+        jadeBelt: {
+            name: '灵玉腰带', grade: '中品法器', category: 'equipment', slot: 'belt',
+            color: 'var(--jade)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><rect x="4" y="12" width="24" height="6" rx="3" stroke="currentColor" stroke-width="1.2"/></svg>',
+            desc: '镶嵌灵玉的腰带，可储存少量灵力，在关键时刻补充体力。',
+            stats: ['最大体力 +20', '灵力上限 +50', '需要修为：炼气期五层']
+        },
+        // 消耗品
+        healPill: {
+            name: '回灵丹', grade: '一品丹药', category: 'consumable',
+            color: 'var(--jade)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="16" r="6" fill="currentColor" opacity="0.4"/></svg>',
+            desc: '修仙界最常见的疗伤丹药，能在短时间内恢复灵力与伤势。',
+            stats: ['恢复生命 +200', '恢复灵力 +100', '品质：普通']
+        },
+        foundationPill: {
+            name: '筑基丹', grade: '三品丹药', category: 'consumable',
+            color: 'var(--gold)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><rect x="6" y="6" width="20" height="20" rx="4" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="16" r="5" fill="currentColor" opacity="0.5"/></svg>',
+            desc: '极为珍贵的突破辅助丹药，大幅提升突破至筑基期的成功率。',
+            stats: ['突破加成 +25%', '仅限筑基期突破', '品质：稀有']
+        },
+        qiPill: {
+            name: '聚灵丹', grade: '二品丹药', category: 'consumable',
+            color: 'var(--spirit)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12" stroke="currentColor" stroke-width="1.2"/><path d="M16 6V16L22 22" stroke="currentColor" stroke-width="1"/></svg>',
+            desc: '辅助修炼的丹药，短时间内大幅提升灵力吸收效率。',
+            stats: ['修炼效率 +50%', '持续时间：2回合', '品质：普通']
+        },
+        // 材料
+        spiritHerb: {
+            name: '灵草', grade: '基础灵材', category: 'material',
+            color: 'var(--jade)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><path d="M16 28V12C16 8 20 4 24 4C20 8 20 12 20 12" stroke="currentColor" stroke-width="1.2"/></svg>',
+            desc: '生长于灵气充沛之地的草本植物，是炼丹不可或缺的基础材料。',
+            stats: ['药性：温和', '年份：十年', '用途：炼丹主要材料']
+        },
+        beastCore: {
+            name: '妖兽内丹', grade: '稀有材料', category: 'material',
+            color: '#c090e0',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="10" stroke="currentColor" stroke-width="1.2"/></svg>',
+            desc: '妖兽修炼凝结的内丹，蕴含妖兽毕生精华。可用于炼制高阶法器。',
+            stats: ['品质：二阶妖兽', '灵力含量：高', '用途：炼器、炼丹']
+        },
+        ironOre: {
+            name: '玄铁矿石', grade: '基础材料', category: 'material',
+            color: 'var(--text-secondary)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><rect x="8" y="8" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.2"/></svg>',
+            desc: '产自灵脉深处的矿石，蕴含微量灵气，是锻造法器的优质材料。',
+            stats: ['纯度：中等', '灵气含量：低', '用途：锻造法器']
+        },
+        // 其他
+        jadeSlip: {
+            name: '神秘玉简', grade: '传承之物', category: 'other',
+            color: 'var(--spirit)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><rect x="10" y="4" width="12" height="24" rx="2" stroke="currentColor" stroke-width="1.2"/></svg>',
+            desc: '以灵玉制成的书简，内含前人对道的感悟。以神识探入方可读取其中内容。',
+            stats: ['内容：未知', '品质：普通', '使用方式：神识读取']
+        },
+        spiritStone: {
+            name: '灵石', grade: '通用货币', category: 'other',
+            color: 'var(--gold)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><polygon points="16,4 24,12 16,20 8,12" stroke="currentColor" stroke-width="1.2"/></polygon></svg>',
+            desc: '天地灵气凝结而成的晶石，是修仙界通用的货币。亦可用于修炼与布阵。',
+            stats: ['蕴含灵气：微量', '用途：交易、修炼、阵法', '数量：随身携带']
+        },
+        formationFlag: {
+            name: '阵旗', grade: '阵法道具', category: 'other',
+            color: 'var(--text-secondary)',
+            icon: '<svg viewBox="0 0 32 32" fill="none"><line x1="16" y1="4" x2="16" y2="28" stroke="currentColor" stroke-width="1.2"/><path d="M16 4L26 10L16 16Z" stroke="currentColor" stroke-width="1.2"/></svg>',
+            desc: '布置阵法的阵旗，可用来布置简单的防御阵或聚灵阵。',
+            stats: ['类型：防御/聚灵', '范围：小', '使用次数：1']
+        }
+    };
+
+    // 已装备映射
+    const equippedItems = {
+        weapon: 'ironSword',
+        armor: null,     // 用 armoredCoat 但保留简单的
+        ring: null,      // 用 jadePendant
+        helm: null,
+        belt: null,
+        bracer: null,
+        boots: null,
+        treasure: null
+    };
+
+    // 纸娃娃槽位初始化（标记已装备的）
+    function initPaperdollSlots() {
+        // weapon slot is pre-equipped in HTML
+        document.querySelectorAll('.paperdoll-slot').forEach(slot => {
+            const slotType = slot.dataset.slot;
+            slot.addEventListener('click', () => onPaperdollSlotClick(slotType));
+        });
+    }
+
+    function onPaperdollSlotClick(slotType) {
+        const eqKey = equippedItems[slotType];
+        if (eqKey && itemDataMap[eqKey]) {
+            const data = itemDataMap[eqKey];
+            NotificationSystem.info('已装备', `${data.name}（${data.grade}）`);
+        } else {
+            const slotLabels = {
+                weapon: '武器', armor: '衣袍', ring: '戒指', helm: '头冠',
+                belt: '腰带', bracer: '护腕', boots: '鞋子', treasure: '法宝'
+            };
+            NotificationSystem.info('空槽位', `${slotLabels[slotType] || slotType} — 可从物品栏中装备`);
+        }
+    }
+
+    // 物品栏过滤
+    const DOM_invTabs = document.querySelectorAll('#invTabs .inv-tab');
+    DOM_invTabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            DOM_invTabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            const filter = this.dataset.filter;
+            filterInventoryItems(filter);
+        });
+    });
+
+    function filterInventoryItems(filter) {
+        const items = document.querySelectorAll('#inventoryGrid .inv-item');
+        items.forEach(item => {
+            if (filter === 'all' || item.dataset.category === filter) {
+                item.style.display = '';
+                item.style.animation = 'fadeSlideIn 250ms var(--ease-out-expo)';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // 物品点击 — 显示详情面板
+    const DOM_invGrid = document.getElementById('inventoryGrid');
+    const DOM_detailPlaceholder = document.querySelector('.detail-placeholder');
+    const DOM_detailContent = document.getElementById('itemDetailContent');
+    const DOM_detailIcon = document.getElementById('detailIcon');
+    const DOM_detailName = document.getElementById('detailName');
+    const DOM_detailGrade = document.getElementById('detailGrade');
+    const DOM_detailDesc = document.getElementById('detailDesc');
+    const DOM_btnEquipItem = document.getElementById('btnEquipItem');
+    const DOM_btnUseItem = document.getElementById('btnUseItem');
+    const DOM_btnDropItem = document.getElementById('btnDropItem');
+
+    let selectedItemKey = null;
+
+    DOM_invGrid.addEventListener('click', (e) => {
+        const invItem = e.target.closest('.inv-item');
+        if (!invItem) return;
+
+        // 选中高亮
+        DOM_invGrid.querySelectorAll('.inv-item').forEach(i => i.classList.remove('selected'));
+        invItem.classList.add('selected');
+
+        const itemKey = invItem.dataset.item;
+        const data = itemDataMap[itemKey];
+        if (!data) return;
+
+        selectedItemKey = itemKey;
+        showItemDetailPanel(data, itemKey);
+    });
+
+    function showItemDetailPanel(data, itemKey) {
+        DOM_detailPlaceholder.style.display = 'none';
+        DOM_detailContent.style.display = 'flex';
+        DOM_detailContent.style.animation = 'fadeSlideIn 250ms var(--ease-out-expo)';
+
+        DOM_detailIcon.innerHTML = data.icon;
+        DOM_detailIcon.className = 'detail-icon-wrap';
+        if (data.category === 'consumable') DOM_detailIcon.classList.add('consumable-color');
+        else if (data.category === 'material') DOM_detailIcon.classList.add('material-color');
+        else if (data.category === 'equipment') DOM_detailIcon.classList.add('equipment-color');
+
+        DOM_detailName.textContent = data.name;
+        DOM_detailGrade.textContent = data.grade;
+        DOM_detailDesc.textContent = data.desc
+            ? `${data.desc}${data.stats ? ' — ' + data.stats.join(' · ') : ''}`
+            : (data.stats ? data.stats.join(' · ') : '');
+
+        // 根据类别显示不同操作按钮
+        const isEquipment = data.category === 'equipment';
+        const isConsumable = data.category === 'consumable';
+
+        DOM_btnEquipItem.style.display = isEquipment ? '' : 'none';
+        DOM_btnEquipItem.textContent = equippedItems[data.slot] === itemKey ? '卸下' : '装备';
+
+        DOM_btnUseItem.style.display = isConsumable ? '' : 'none';
+        DOM_btnDropItem.style.display = '';
+    }
+
+    // 装备按钮
+    DOM_btnEquipItem.addEventListener('click', () => {
+        if (!selectedItemKey) return;
+        const data = itemDataMap[selectedItemKey];
+        if (!data || !data.slot) return;
+
+        const slotEl = document.querySelector(`.paperdoll-slot[data-slot="${data.slot}"]`);
+        if (!slotEl) return;
+
+        if (equippedItems[data.slot] === selectedItemKey) {
+            // 卸下
+            equippedItems[data.slot] = null;
+            slotEl.classList.remove('equipped');
+            const nameEl = slotEl.querySelector('.pd-slot-name');
+            if (nameEl) { nameEl.textContent = '空'; nameEl.classList.add('empty-slot'); }
+            DOM_btnEquipItem.textContent = '装备';
+            NotificationSystem.info('已卸下', `${data.name} 已从装备栏卸下。`);
+        } else {
+            // 装备
+            equippedItems[data.slot] = selectedItemKey;
+            slotEl.classList.add('equipped');
+            const nameEl = slotEl.querySelector('.pd-slot-name');
+            if (nameEl) { nameEl.textContent = data.name; nameEl.classList.remove('empty-slot'); }
+            DOM_btnEquipItem.textContent = '卸下';
+            NotificationSystem.success('装备成功', `已装备 ${data.name} 到${slotEl.querySelector('.pd-slot-label')?.textContent || '装备栏'}。`);
+        }
+    });
+
+    // 使用按钮
+    DOM_btnUseItem.addEventListener('click', () => {
+        if (!selectedItemKey) return;
+        const data = itemDataMap[selectedItemKey];
+        if (!data || data.category !== 'consumable') return;
+
+        const p = GameState.player;
+        if (selectedItemKey === 'healPill') {
+            p.hp = Math.min(p.maxHp, p.hp + 200);
+            p.qi = Math.min(p.maxQi, p.qi + 100);
+            updateCultivationUI();
+            NotificationSystem.success('使用回灵丹', '生命 +200，灵力 +100');
+        } else if (selectedItemKey === 'foundationPill') {
+            NotificationSystem.info('筑基丹', '此丹药应在突破时使用，当前使用无效。');
+        } else if (selectedItemKey === 'qiPill') {
+            p.cultivationRate += 6;
+            updateCultivationUI();
+            NotificationSystem.success('使用聚灵丹', '修炼效率 +50%，持续2回合！');
+            setTimeout(() => {
+                p.cultivationRate -= 6;
+                updateCultivationUI();
+                NotificationSystem.info('聚灵丹失效', '修炼效率恢复至正常水平。');
+            }, 60000);
+        }
+    });
+
+    // 丢弃按钮
+    DOM_btnDropItem.addEventListener('click', () => {
+        if (!selectedItemKey) return;
+        const data = itemDataMap[selectedItemKey];
+        ModalManager.showConfirm('丢弃物品', `确认丢弃 <span style="color:var(--gold-light)">${data.name}</span> 吗？此操作不可撤销。`, () => {
+            const itemEl = DOM_invGrid.querySelector(`[data-item="${selectedItemKey}"]`);
+            if (itemEl) {
+                itemEl.style.animation = 'notifSlideOut 300ms var(--ease-out-expo) forwards';
+                itemEl.addEventListener('animationend', () => itemEl.remove(), { once: true });
+            }
+            // Reset detail panel
+            DOM_detailPlaceholder.style.display = '';
+            DOM_detailContent.style.display = 'none';
+            selectedItemKey = null;
+            NotificationSystem.info('已丢弃', `${data.name} 已从储物袋中移除。`);
+        });
+    });
+
+    // 初始化纸娃娃
+    initPaperdollSlots();
+
+    /* ================================
+       坊市系统
+       ================================ */
+    DOM.mktTabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            DOM.mktTabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            const category = this.dataset.mkt;
+            filterMarketItems(category);
+        });
+    });
+
+    function filterMarketItems(category) {
+        const items = DOM.marketGrid.querySelectorAll('.market-item');
+        items.forEach(item => {
+            if (category === 'all' || item.dataset.category === category) {
+                item.style.display = '';
+                item.style.animation = 'fadeSlideIn 300ms var(--ease-out-expo)';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    DOM.marketSearch.addEventListener('input', function () {
+        const query = this.value.toLowerCase();
+        const items = DOM.marketGrid.querySelectorAll('.market-item');
+        items.forEach(item => {
+            const name = item.querySelector('h4')?.textContent.toLowerCase() || '';
+            const desc = item.querySelector('p')?.textContent.toLowerCase() || '';
+            if (name.includes(query) || desc.includes(query)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    // 购买按钮
+    DOM.marketGrid.addEventListener('click', (e) => {
+        const buyBtn = e.target.closest('.btn-buy');
+        if (!buyBtn) return;
+        const item = buyBtn.closest('.market-item');
+        const itemName = item.querySelector('h4')?.textContent || '物品';
+        const priceEl = item.querySelector('.mkt-price span');
+        const price = priceEl ? parseInt(priceEl.textContent) : 0;
+
+        if (GameState.player.spiritStones >= price) {
+            GameState.player.spiritStones -= price;
+            updateCultivationUI();
+            NotificationSystem.success('购买成功', `你花费 ${price} 灵石购买了 ${itemName}。`);
+        } else {
+            NotificationSystem.error('灵石不足', `购买 ${itemName} 需要 ${price} 灵石，你的灵石不足。`);
+        }
+    });
+
+    /* ================================
+       功法交互
+       ================================ */
+    document.getElementById('techniqueGrid').addEventListener('click', (e) => {
+        const card = e.target.closest('.tech-card');
+        if (!card) return;
+
+        if (card.classList.contains('locked')) {
+            NotificationSystem.info('未解锁', '你尚未满足此功法的解锁条件。');
+            return;
+        }
+
+        const name = card.querySelector('h3')?.textContent || '功法';
+        const grade = card.querySelector('.tech-grade')?.textContent || '';
+        const desc = card.querySelector('.tech-desc')?.textContent || '';
+
+        NotificationSystem.info(name, `${grade} — ${desc}`);
+    });
+
+    /* ================================
+       宗门交互
+       ================================ */
+    document.getElementById('memberList').addEventListener('click', (e) => {
+        const member = e.target.closest('.member-item');
+        if (!member) return;
+        const name = member.querySelector('.member-name')?.textContent || '';
+        const role = member.querySelector('.member-role')?.textContent || '';
+        NotificationSystem.info(`${name}`, `宗门职位：${role}`);
+    });
+
+    document.getElementById('questList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-quest');
+        if (!btn) return;
+        const questItem = btn.closest('.quest-item');
+        const questName = questItem.querySelector('.quest-name')?.textContent || '';
+        btn.textContent = '已接受';
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        NotificationSystem.success('任务已接受', `你接受了宗门任务：${questName}`);
+    });
+
+    /* ================================
+       LLM 交互栏
+       ================================ */
+    function sendLlmMessage() {
+        const input = DOM.llmInput;
+        const text = input.value.trim();
+        if (!text) return;
+
+        if (!consumeStamina(1, '进行探索')) return;
+
+        // Add user message
+        addLlmMessage('你', text, 'player');
+
+        input.value = '';
+        input.focus();
+
+        // Simulate LLM response
+        setTimeout(() => {
+            const responses = generateLlmResponse(text);
+            addLlmMessage('系统', responses[0], 'system');
+
+            // Multi-part responses
+            if (responses.length > 1) {
+                responses.slice(1).forEach((resp, i) => {
+                    setTimeout(() => addLlmMessage('系统', resp, 'system'), (i + 1) * 1200);
+                });
+            }
+        }, 600 + Math.random() * 800);
+    }
+
+    function addLlmMessage(sender, text, type) {
+        const msg = document.createElement('div');
+        msg.className = 'llm-msg';
+        msg.innerHTML = `<span class="msg-sender">${sender}</span><span class="msg-text">${text}</span>`;
+        DOM.llmHistory.appendChild(msg);
+        DOM.llmHistory.scrollTop = DOM.llmHistory.scrollHeight;
+
+        // Keep max 20 messages
+        while (DOM.llmHistory.children.length > 20) {
+            DOM.llmHistory.firstElementChild.remove();
+        }
+    }
+
+    function generateLlmResponse(input) {
+        const lower = input.toLowerCase();
+
+        if (lower.includes('修炼') || lower.includes('练功')) {
+            return [
+                '天地灵气在此刻似乎更加浓郁了几分。你感应到周围的灵气正缓缓向你汇聚。',
+                '建议你找一个灵气充沛之地，静心打坐，开始修炼。'
+            ];
+        }
+        if (lower.includes('战斗') || lower.includes('妖兽') || lower.includes('敌人')) {
+            return [
+                '前方传来一阵妖兽的咆哮声，空气中弥漫着肃杀之气。',
+                '以你目前的修为，需谨慎选择对手。建议先从低阶妖兽开始历练。'
+            ];
+        }
+        if (lower.includes('突破') || lower.includes('境界')) {
+            return [
+                '突破境界乃是修仙路上最关键的时刻。天劫将至，需做好万全准备。',
+                '确保修炼进度圆满，备好突破丹药，方可一试。'
+            ];
+        }
+        if (lower.includes('坊市') || lower.includes('购买') || lower.includes('灵石')) {
+            return [
+                '坊市中有不少修士在交易宝物。灵石是此间的硬通货，务必好生利用。',
+                '在坊市中可以买到丹药、法器、功法等各类修仙所需之物。'
+            ];
+        }
+        if (lower.includes('宗门')) {
+            return [
+                '太虚剑宗以剑道闻名东域。宗门内有传功长老可以指點你的修行。',
+                '完成宗门任务可获得宗门贡献，提升弟子等级。'
+            ];
+        }
+        if (lower.includes('你好') || lower.includes('问候')) {
+            return ['道友好。修仙之路漫漫，你我皆是求道之人。前方是太虚之境，机遇与凶险并存。'];
+        }
+
+        const genericResponses = [
+            ['修仙之路，贵在持之以恒。每一分努力，都在为你铺就通往大道的道路。'],
+            ['天地不仁，以万物为刍狗。修仙之人，需逆天而行，方能超脱。'],
+            ['灵气波动异常，此地似乎隐藏着什么秘密...继续探索也许会有发现。'],
+            ['大道三千，殊途同归。无论剑修、丹修、符修，皆可证道成仙。'],
+            ['你感受到体内灵力微微波动，这是修为将要精进的前兆。']
+        ];
+
+        return [genericResponses[Math.floor(Math.random() * genericResponses.length)][0]];
+    }
+
+    DOM.btnLlmSend.addEventListener('click', sendLlmMessage);
+    DOM.llmInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendLlmMessage();
+        }
+    });
+
+    DOM.btnLlmToggle.addEventListener('click', () => {
+        DOM.llmBar.classList.toggle('expanded');
+    });
+
+    DOM.btnLlmMode.addEventListener('click', (e) => {
+        createRipple(e, DOM.btnLlmMode);
+        NotificationSystem.info('对话模式', '当前模式：自由探索。输入你想做的事情，开始你的修仙之旅。');
+    });
+
+    /* ================================
+       设置
+       ================================ */
+    DOM.btnNextTurn.addEventListener('click', (e) => {
+        createRipple(e, DOM.btnNextTurn);
+        advanceTurn();
+    });
+
+    DOM.btnSettings.addEventListener('click', (e) => {
+        createRipple(e, DOM.btnSettings);
+        ModalManager.open(DOM.modalSettings);
+    });
+
+    DOM.settingParticles.addEventListener('change', function () {
+        ParticleSystem.toggle(this.checked);
+    });
+
+    DOM.settingAnimations.addEventListener('change', function () {
+        GameState.settings.animations = this.checked;
+        document.documentElement.style.setProperty(
+            '--transition-smooth',
+            this.checked ? '300ms cubic-bezier(0.16, 1, 0.3, 1)' : '0ms'
+        );
+        document.documentElement.style.setProperty(
+            '--transition-fast',
+            this.checked ? '150ms cubic-bezier(0.16, 1, 0.3, 1)' : '0ms'
+        );
+    });
+
+    // Close settings modal
+    DOM.modalSettings.querySelector('.modal-close')?.addEventListener('click', () => {
+        ModalManager.close(DOM.modalSettings);
+    });
+    DOM.modalSettings.querySelector('.modal-backdrop')?.addEventListener('click', () => {
+        ModalManager.close(DOM.modalSettings);
+    });
+
+    /* ================================
+       模态框关闭按钮绑定
+       ================================ */
+    document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const modal = this.closest('.modal');
+            if (modal) ModalManager.close(modal);
+        });
+    });
+
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+        backdrop.addEventListener('click', function () {
+            const modal = this.closest('.modal');
+            if (modal) ModalManager.close(modal);
+        });
+    });
+
+    /* ================================
+       键盘快捷键
+       ================================ */
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+Enter to toggle cultivation
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            switchTab('cultivation');
+            toggleCultivation();
+        }
+
+        // Ctrl+Period to advance turn
+        if (e.ctrlKey && e.key === '.') {
+            e.preventDefault();
+            advanceTurn();
+        }
+
+        // Escape to close modals (handled natively by dialog)
+
+        // Number keys for tab switching
+        if (e.ctrlKey && e.key >= '1' && e.key <= '7') {
+            e.preventDefault();
+            const tabs = ['cultivation', 'combat', 'breakthrough', 'abode', 'techniques', 'market', 'sect'];
+            switchTab(tabs[parseInt(e.key) - 1]);
+        }
+    });
+
+    /* ================================
+       全局涟漪效果绑定
+       ================================ */
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-primary, .btn-combat, .btn-buy, .btn-quest');
+        if (btn && !e.target.closest('#btnCultivate') && !e.target.closest('#btnAttack') &&
+            !e.target.closest('#btnSkill1') && !e.target.closest('#btnSkill2') &&
+            !e.target.closest('#btnDefend') && !e.target.closest('#btnBreakthrough') &&
+            !e.target.closest('#btnSettings') && !e.target.closest('#btnLlmMode')) {
+            createRipple(e, btn);
+        }
+    });
+
+    /* ================================
+       初始化
+       ================================ */
+    function init() {
+        ParticleSystem.init();
+        updateCultivationUI();
+        updateCombatUI();
+        setCombatButtonsEnabled(false);
+
+        // Show welcome notification
+        setTimeout(() => {
+            NotificationSystem.info(
+                '欢迎来到太虚之境',
+                '你是一名初入道途的修士。开始修炼，探索这片充满灵气的修仙世界吧。',
+                5000
+            );
+        }, 800);
+
+        // Periodic update for UI
+        setInterval(updateCultivationUI, 5000);
+    }
+
+    init();
+
+    console.log('%c 太虚之境 %c 修仙世界 ',
+        'font-size:1.4em;font-family:"Noto Serif SC",serif;color:#c9a84c;',
+        'font-size:0.9em;color:#b8a890;');
+    console.log('%c东方玄幻修仙网页游戏 · 前端原型', 'color:#706858;font-style:italic;');
+
+})();
