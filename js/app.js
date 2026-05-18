@@ -715,36 +715,58 @@
     /* ================================
        标签页导航
        ================================ */
+    // 标签页显式映射（避免字符串拼接的不稳定性）
+    const TAB_MAP = {
+        explore:       { content: 'tabExplore',       nav: 'navExplore' },
+        cultivation:   { content: 'tabCultivation',   nav: 'navCultivation' },
+        combat:        { content: 'tabCombat',        nav: 'navCombat' },
+        breakthrough:  { content: 'tabBreakthrough',  nav: 'navBreakthrough' },
+        abode:         { content: 'tabAbode',         nav: 'navAbode' },
+        techniques:    { content: 'tabTechniques',    nav: 'navTechniques' },
+        market:        { content: 'tabMarket',        nav: 'navMarket' },
+        sect:          { content: 'tabSect',          nav: 'navSect' }
+    };
+
+    let _currentTab = 'explore';
+
     function switchTab(tabName) {
-        DOM.tabContents.forEach(tc => tc.classList.remove('active'));
-        DOM.navItems.forEach(ni => {
+        // 取消所有激活状态
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(ni => {
             ni.classList.remove('active');
             ni.removeAttribute('aria-current');
         });
 
-        const tabContent = document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
-        const navBtn = document.getElementById(`nav${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+        const mapping = TAB_MAP[tabName];
+        if (!mapping) return;
 
-        if (tabContent) tabContent.classList.add('active');
+        const tabContent = document.getElementById(mapping.content);
+        const navBtn = document.getElementById(mapping.nav);
+
+        if (tabContent) {
+            tabContent.classList.add('active');
+            tabContent.style.animation = 'none';
+            tabContent.offsetHeight; // 触发回流
+            tabContent.style.animation = 'fadeSlideIn 350ms var(--ease-out-expo)';
+        }
         if (navBtn) {
             navBtn.classList.add('active');
             navBtn.setAttribute('aria-current', 'page');
         }
 
-        // Re-trigger animation
-        if (tabContent) {
-            tabContent.style.animation = 'none';
-            tabContent.offsetHeight;
-            tabContent.style.animation = '';
-        }
+        _currentTab = tabName;
     }
 
-    DOM.navItems.forEach(item => {
-        item.addEventListener('click', function (e) {
-            const tab = this.dataset.tab;
-            if (tab) switchTab(tab);
-            createRipple(e, this);
-        });
+    // 侧边导航点击事件（用事件委托代替逐个绑定，确保 DOM 刷新后仍然可用）
+    document.getElementById('sideNav').addEventListener('click', function (e) {
+        const btn = e.target.closest('.nav-item');
+        if (!btn) return;
+        const tab = btn.dataset.tab;
+        if (tab) switchTab(tab);
+        createRipple(e, btn);
+    });
+
+    // 旧代码移除：不再使用 DOM.navItems.forEach 逐个绑定
     });
 
     /* ================================
@@ -2219,7 +2241,7 @@
         // Number keys for tab switching
         if (e.ctrlKey && e.key >= '1' && e.key <= '8') {
             e.preventDefault();
-            const tabs = ['explore', 'cultivation', 'combat', 'breakthrough', 'abode', 'techniques', 'market', 'sect'];
+            const tabs = Object.keys(TAB_MAP);
             switchTab(tabs[parseInt(e.key) - 1]);
         }
     });

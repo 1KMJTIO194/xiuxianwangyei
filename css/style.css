@@ -1034,11 +1034,15 @@ body {
 /* ----- Tab内容通用 ----- */
 .tab-content {
     display: none;
-    animation: fadeSlideIn 400ms var(--ease-out-expo);
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 250ms var(--ease-out-expo), transform 250ms var(--ease-out-expo);
 }
 
 .tab-content.active {
     display: block;
+    opacity: 1;
+    transform: translateY(0);
 }
 
 @keyframes fadeSlideIn {
