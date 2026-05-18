@@ -1499,31 +1499,302 @@
     });
 
     /* ================================
-       LLM 交互栏
+       叙事系统 · 酒馆化交互核心
        ================================ */
+
+    // XML 标签解析器: <thinking> <maintext> <option> <sum> <vars>
+    function parseNarrativeResponse(raw) {
+        const result = {
+            thinking: '',
+            maintext: '',
+            options: [],
+            summary: '',
+            vars: {}
+        };
+
+        const extractTag = (tag) => {
+            const re = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i');
+            const m = raw.match(re);
+            return m ? m[1].trim() : '';
+        };
+
+        result.thinking = extractTag('thinking');
+        result.maintext = extractTag('maintext');
+        result.summary = extractTag('sum');
+
+        const optStr = extractTag('option');
+        if (optStr) {
+            result.options = optStr.split('\n').map(o => o.trim()).filter(o => o.length > 0);
+        }
+
+        const varsStr = extractTag('vars');
+        if (varsStr) {
+            try { result.vars = JSON.parse(varsStr); } catch (e) { /* ignore */ }
+        }
+
+        // Fallback: if no XML tags, treat the whole text as maintext
+        if (!result.maintext && !result.thinking && raw.trim()) {
+            result.maintext = raw.trim();
+        }
+
+        return result;
+    }
+
+    // 叙事状态
+    const NarrativeState = {
+        turn: 0,
+        currentScene: '太虚剑宗·石室',
+        history: [{ turn: 0, summary: '太虚剑宗·石室苏醒', scene: '石室' }]
+    };
+
+    // 叙事 DOM
+    const DOM_narrTextWrap = document.getElementById('narrativeTextWrap');
+    const DOM_narrOptions = document.getElementById('narrativeOptions');
+    const DOM_narrInput = document.getElementById('narrInput');
+    const DOM_narrSend = document.getElementById('btnNarrSend');
+    const DOM_historyList = document.getElementById('historyList');
+
+    function addNarrativeEntry(sender, text, className = '') {
+        const p = GameState.player;
+        const timeStr = `修仙历 ${GameState.year}年${GameState.month}月`;
+
+        const entry = document.createElement('div');
+        entry.className = `narrative-entry ${className}`;
+        entry.innerHTML = `
+            <div class="narrate-meta">
+                <span class="narrate-label">${sender}</span>
+                <span class="narrate-time">${timeStr}</span>
+            </div>
+            <div class="narrate-body">${text}</div>
+        `;
+        DOM_narrTextWrap.appendChild(entry);
+        DOM_narrTextWrap.scrollTop = DOM_narrTextWrap.scrollHeight;
+
+        // Limit scrollback
+        while (DOM_narrTextWrap.children.length > 30) {
+            DOM_narrTextWrap.firstElementChild.remove();
+        }
+    }
+
+    function clearNarrativeOptions() {
+        DOM_narrOptions.innerHTML = '';
+    }
+
+    function setNarrativeOptions(options) {
+        clearNarrativeOptions();
+        options.forEach(opt => {
+            const text = typeof opt === 'string' ? opt : opt.text;
+            const action = typeof opt === 'object' ? opt.action : 'freeInput';
+            const btn = document.createElement('button');
+            btn.className = 'narr-option';
+            btn.dataset.action = action;
+            btn.innerHTML = `
+                <span class="opt-icon">
+                    <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.3"/><path d="M6 10L9 13L14 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="opt-text">${text}</span>
+            `;
+            btn.addEventListener('click', () => handleOptionClick(text, action));
+            DOM_narrOptions.appendChild(btn);
+        });
+    }
+
+    function addHistoryEntry(summary) {
+        NarrativeState.turn++;
+        NarrativeState.history.push({ turn: NarrativeState.turn, summary, scene: NarrativeState.currentScene });
+
+        // Update sidebar
+        DOM_historyList.querySelectorAll('.history-item').forEach(h => h.classList.remove('active'));
+        const item = document.createElement('div');
+        item.className = 'history-item active';
+        item.dataset.turn = NarrativeState.turn;
+        item.innerHTML = `<span class="hi-turn">第${NarrativeState.turn}回</span><span class="hi-summary">${summary}</span>`;
+        DOM_historyList.appendChild(item);
+        item.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function handleOptionClick(text, action) {
+        if (!consumeStamina(1, '行动')) return;
+        addNarrativeEntry('你', `<p>${text}</p>`, 'player-narrate');
+        clearNarrativeOptions();
+        NarrativeState.currentScene = text.substring(0, 20);
+        addHistoryEntry(text.substring(0, 15));
+
+        // Generate response
+        setTimeout(() => processNarrativeAction(text, action), 500);
+    }
+
+    function processNarrativeAction(text, action) {
+        const response = generateStructuredResponse(text, action);
+        const parsed = parseNarrativeResponse(response.raw);
+
+        // Show maintext
+        if (parsed.maintext) {
+            const paragraphs = parsed.maintext.split('\n\n').filter(p => p.trim());
+            const html = paragraphs.map(p => `<p>${p}</p>`).join('');
+            addNarrativeEntry('系统', html, 'system-narrate');
+        }
+
+        // Set options
+        const options = parsed.options.length > 0 ? parsed.options : response.defaultOptions;
+        if (options.length > 0) {
+            setNarrativeOptions(options.map(o => typeof o === 'string' ? o : o));
+        }
+
+        // Show thinking in console for debugging
+        if (parsed.thinking) {
+            console.log('%c[思考] ' + parsed.thinking, 'color:#706858;font-style:italic');
+        }
+    }
+
+    function sendNarrativeInput() {
+        const text = DOM_narrInput.value.trim();
+        if (!text) return;
+        if (!consumeStamina(1, '行动')) return;
+
+        addNarrativeEntry('你', `<p>${text}</p>`, 'player-narrate');
+        clearNarrativeOptions();
+        DOM_narrInput.value = '';
+        DOM_narrInput.focus();
+        addHistoryEntry(text.substring(0, 15));
+
+        setTimeout(() => processNarrativeAction(text, 'freeInput'), 500);
+    }
+
+    function generateStructuredResponse(input, action) {
+        const lower = input.toLowerCase();
+        const responses = [];
+
+        if (lower.includes('修炼') || lower.includes('打坐') || action === 'cultivate') {
+            responses.push({
+                raw: `<thinking>玩家选择修炼，这是提升修为的主要方式。</thinking>
+<maintext>你盘膝而坐，双手结印，运转太虚吐纳术。随着呼吸的律动，周围的天地灵气如同溪流般涌入你的经脉，在丹田中凝练成纯净的灵力。
+
+修炼的过程枯燥却充实。你感受到体内的灵力正在缓缓增长，每一缕灵气的融入都让你的修为更加稳固。石室中的夜明珠散发着柔和的光芒，你的心神完全沉浸在修炼之中。</maintext>
+<option>继续修炼，冲击更高层次</option>
+<option>停下修炼，去坊市购买丹药辅助</option>
+<option>去战斗，以实战检验修为</option>
+<option>自由行动...</option>
+<sum>潜心修炼</sum>`,
+                defaultOptions: ['继续修炼', '去坊市看看', '寻找妖兽战斗', '自由行动...']
+            });
+        } else if (lower.includes('战斗') || lower.includes('妖兽') || lower.includes('敌人') || action === 'goMission') {
+            responses.push({
+                raw: `<thinking>玩家想要战斗或探险。需要判断是否有合适的对手。</thinking>
+<maintext>你来到宗门的演武场，几位同门正在切磋技艺。剑光闪烁，灵气激荡。演武场边缘的任务布告栏上张贴着几份悬赏令——
+
+「青阳镇附近有妖兽出没，祸害百姓。急需修士前往除妖。建议修为：练气期五层以上。」
+
+你掂量了一下自己的实力。以目前练气期三层的修为，独自面对妖兽尚有风险，但若是小心行事，也未尝不可。或者，你可以先在演武场与同门切磋，积累战斗经验。</maintext>
+<option>接下悬赏令，前往青阳镇除妖</option>
+<option>在演武场与同门切磋练手</option>
+<option>先回去修炼，提升实力再来</option>
+<option>自由行动...</option>
+<sum>演武场·除妖任务</sum>`,
+                defaultOptions: ['接下悬赏令', '在演武场切磋', '回去修炼', '自由行动...']
+            });
+        } else if (lower.includes('坊市') || lower.includes('购买') || lower.includes('交易')) {
+            responses.push({
+                raw: `<thinking>玩家前往坊市交易。这是获取资源的重要途径。</thinking>
+<maintext>你御剑来到宗门外的坊市。这里热闹非凡，修士们来来往往，摊位上的各种灵材、丹药、法器琳琅满目。
+
+一位白发苍苍的老者坐在角落里，面前摆放着几瓶丹药。「小友，来看看吧，老夫炼制的回灵丹品质上乘，只需五十灵石一瓶。」不远处，一个年轻修士正在叫卖他偶然得到的法器。
+
+你的储物袋中有一些灵石，足够购买一些必需品。坊市的物品可以在「坊市」页面查看和购买。</maintext>
+<option>购买回灵丹（50灵石）</option>
+<option>逛逛法器摊位</option>
+<option>打听最近的消息</option>
+<option>自由行动...</option>
+<sum>坊市交易</sum>`,
+                defaultOptions: ['购买回灵丹', '逛法器摊位', '打听消息', '自由行动...']
+            });
+        } else if (lower.includes('宗门') || lower.includes('师门') || action === 'exploreSect') {
+            responses.push({
+                raw: `<thinking>玩家在宗门内探索。太虚剑宗是一个剑修门派。</thinking>
+<maintext>你在太虚剑宗内缓步而行。宗门依山而建，层层叠叠的殿宇在云雾中若隐若现。路过的弟子们有的御剑飞行，有的抱剑而行，每个人都沉浸在自己的修行之中。
+
+前方是传功殿，剑尘长老正在讲授剑道。据说他曾在金丹期时一剑斩杀三头妖兽，威震一方。你若能得到他的指点，剑道修为必定大进。
+
+再往前走则是藏经阁，收录了宗门千年来的各类功法典籍。不过以你目前内门弟子的身份，只能阅览黄阶功法。</maintext>
+<option>去传功殿听长老讲道</option>
+<option>前往藏经阁查阅功法</option>
+<option>回修炼室继续修炼</option>
+<option>自由行动...</option>
+<sum>宗门漫步</sum>`,
+                defaultOptions: ['去传功殿听道', '去藏经阁', '回去修炼', '自由行动...']
+            });
+        } else if (lower.includes('突破') || lower.includes('境界') || lower.includes('晋级')) {
+            responses.push({
+                raw: `<thinking>玩家关注境界突破。需要检查是否满足突破条件。</thinking>
+<maintext>突破境界是修仙之路上最关键的一步。每一次大境界的跨越，都是对自身极限的超越。从炼气期突破至筑基期，需要修炼进度达到圆满，并且备好筑基丹以提高成功率。
+
+你查看了一下自身的状态。当前修炼进度为${GameState.player.cultivationProgress}%，距离圆满尚有一段距离。突破之事不可操之过急，根基不牢则后患无穷。当修炼进度达到100%后，前往「突破」页面尝试破境。</maintext>
+<option>继续修炼，提升进度</option>
+<option>去坊市购买筑基丹</option>
+<option>去「突破」页面查看详情</option>
+<option>自由行动...</option>
+<sum>关注突破</sum>`,
+                defaultOptions: ['继续修炼', '购买筑基丹', '查看突破页面', '自由行动...']
+            });
+        } else {
+            responses.push({
+                raw: `<thinking>通用探索回复。玩家进行了自由行动。</thinking>
+<maintext>你在太虚剑宗中漫步，感受着天地间流转的灵气。修仙之路漫漫，每一步都凝聚着修士的心血与感悟。
+
+前方有数条道路可走——你可以去修炼室打坐练功，也可以去演武场磨练战斗技巧，或是前往坊市交易物品。宗门任务堂也有适合你的任务等待接取。
+
+天地之大，机缘无数。你的每一次选择，都将影响你的修仙之路。</maintext>
+<option>去修炼室打坐练功</option>
+<option>去演武场锻炼战斗</option>
+<option>去坊市购买物品</option>
+<option>自由行动...</option>
+<sum>自由探索</sum>`,
+                defaultOptions: ['去修炼室', '去演武场', '去坊市', '自由行动...']
+            });
+        }
+
+        return responses[0];
+    }
+
+    // 探索页选项点击事件
+    DOM_narrOptions.addEventListener('click', (e) => {
+        const btn = e.target.closest('.narr-option');
+        if (!btn) return;
+        // handled by individual button listeners set in setNarrativeOptions
+    });
+
+    DOM_narrSend.addEventListener('click', sendNarrativeInput);
+    DOM_narrInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendNarrativeInput();
+        }
+    });
+
+    // 保留底部 LLM 栏兼容
     function sendLlmMessage() {
         const input = DOM.llmInput;
         const text = input.value.trim();
         if (!text) return;
-
         if (!consumeStamina(1, '进行探索')) return;
-
-        // Add user message
         addLlmMessage('你', text, 'player');
-
         input.value = '';
         input.focus();
 
-        // Simulate LLM response
         setTimeout(() => {
-            const responses = generateLlmResponse(text);
-            addLlmMessage('系统', responses[0], 'system');
+            const resp = generateStructuredResponse(text, 'freeInput');
+            const parsed = parseNarrativeResponse(resp.raw);
+            const displayText = parsed.maintext || resp.raw;
+            addLlmMessage('系统', displayText.replace(/<[^>]+>/g, '').substring(0, 120) + '...', 'system');
 
-            // Multi-part responses
-            if (responses.length > 1) {
-                responses.slice(1).forEach((resp, i) => {
-                    setTimeout(() => addLlmMessage('系统', resp, 'system'), (i + 1) * 1200);
-                });
+            // Also show in explore tab if not already there
+            if (document.getElementById('tabExplore').classList.contains('active')) {
+                const paragraphs = displayText.split('\n\n').filter(p => p.trim());
+                addNarrativeEntry('系统', paragraphs.map(p => `<p>${p}</p>`).join(''), 'system-narrate');
+                const options = parsed.options.length > 0 ? parsed.options : resp.defaultOptions;
+                if (options.length > 0) {
+                    setNarrativeOptions(options.map(o => typeof o === 'string' ? o : o));
+                }
             }
         }, 600 + Math.random() * 800);
     }
@@ -1534,59 +1805,9 @@
         msg.innerHTML = `<span class="msg-sender">${sender}</span><span class="msg-text">${text}</span>`;
         DOM.llmHistory.appendChild(msg);
         DOM.llmHistory.scrollTop = DOM.llmHistory.scrollHeight;
-
-        // Keep max 20 messages
         while (DOM.llmHistory.children.length > 20) {
             DOM.llmHistory.firstElementChild.remove();
         }
-    }
-
-    function generateLlmResponse(input) {
-        const lower = input.toLowerCase();
-
-        if (lower.includes('修炼') || lower.includes('练功')) {
-            return [
-                '天地灵气在此刻似乎更加浓郁了几分。你感应到周围的灵气正缓缓向你汇聚。',
-                '建议你找一个灵气充沛之地，静心打坐，开始修炼。'
-            ];
-        }
-        if (lower.includes('战斗') || lower.includes('妖兽') || lower.includes('敌人')) {
-            return [
-                '前方传来一阵妖兽的咆哮声，空气中弥漫着肃杀之气。',
-                '以你目前的修为，需谨慎选择对手。建议先从低阶妖兽开始历练。'
-            ];
-        }
-        if (lower.includes('突破') || lower.includes('境界')) {
-            return [
-                '突破境界乃是修仙路上最关键的时刻。天劫将至，需做好万全准备。',
-                '确保修炼进度圆满，备好突破丹药，方可一试。'
-            ];
-        }
-        if (lower.includes('坊市') || lower.includes('购买') || lower.includes('灵石')) {
-            return [
-                '坊市中有不少修士在交易宝物。灵石是此间的硬通货，务必好生利用。',
-                '在坊市中可以买到丹药、法器、功法等各类修仙所需之物。'
-            ];
-        }
-        if (lower.includes('宗门')) {
-            return [
-                '太虚剑宗以剑道闻名东域。宗门内有传功长老可以指點你的修行。',
-                '完成宗门任务可获得宗门贡献，提升弟子等级。'
-            ];
-        }
-        if (lower.includes('你好') || lower.includes('问候')) {
-            return ['道友好。修仙之路漫漫，你我皆是求道之人。前方是太虚之境，机遇与凶险并存。'];
-        }
-
-        const genericResponses = [
-            ['修仙之路，贵在持之以恒。每一分努力，都在为你铺就通往大道的道路。'],
-            ['天地不仁，以万物为刍狗。修仙之人，需逆天而行，方能超脱。'],
-            ['灵气波动异常，此地似乎隐藏着什么秘密...继续探索也许会有发现。'],
-            ['大道三千，殊途同归。无论剑修、丹修、符修，皆可证道成仙。'],
-            ['你感受到体内灵力微微波动，这是修为将要精进的前兆。']
-        ];
-
-        return [genericResponses[Math.floor(Math.random() * genericResponses.length)][0]];
     }
 
     DOM.btnLlmSend.addEventListener('click', sendLlmMessage);
@@ -1680,9 +1901,9 @@
         // Escape to close modals (handled natively by dialog)
 
         // Number keys for tab switching
-        if (e.ctrlKey && e.key >= '1' && e.key <= '7') {
+        if (e.ctrlKey && e.key >= '1' && e.key <= '8') {
             e.preventDefault();
-            const tabs = ['cultivation', 'combat', 'breakthrough', 'abode', 'techniques', 'market', 'sect'];
+            const tabs = ['explore', 'cultivation', 'combat', 'breakthrough', 'abode', 'techniques', 'market', 'sect'];
             switchTab(tabs[parseInt(e.key) - 1]);
         }
     });

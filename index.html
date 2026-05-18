@@ -76,7 +76,11 @@
             <!-- 侧边导航 -->
             <nav id="sideNav" aria-label="主导航">
                 <div class="nav-inner">
-                    <button class="nav-item active" data-tab="cultivation" id="navCultivation" aria-current="page">
+                    <button class="nav-item active" data-tab="explore" id="navExplore" aria-current="page">
+                        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M17 7L11 13L7 11L7 17L13 13L17 17Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><circle cx="16" cy="16" r="1.5" fill="currentColor" opacity="0.6"/></svg>
+                        <span>探索</span>
+                    </button>
+                    <button class="nav-item" data-tab="cultivation" id="navCultivation">
                         <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M12 2V8M12 16V22M2 12H8M16 12H22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.5"/></svg>
                         <span>修炼</span>
                     </button>
@@ -109,8 +113,77 @@
 
             <!-- 主内容区 -->
             <main id="mainContent">
+                <!-- 探索叙事页面 · 酒馆化核心 -->
+                <section class="tab-content active" id="tabExplore" aria-labelledby="navExplore">
+                    <div class="explore-layout">
+                        <!-- 叙事主区域 -->
+                        <div class="narrative-main">
+                            <div class="narrative-scene" id="narrativeScene">
+                                <div class="scene-atmosphere"></div>
+                                <div class="narrative-text-wrap" id="narrativeTextWrap">
+                                    <div class="narrative-entry system-narrate" id="narrativeEntry">
+                                        <div class="narrate-meta">
+                                            <span class="narrate-label">系统</span>
+                                            <span class="narrate-time">修仙历 1年1月</span>
+                                        </div>
+                                        <div class="narrate-body">
+                                            <p>你睁开双眼，发现自己身处一间古朴的石室之中。墙壁上镶嵌的夜明珠散发着幽幽的光芒，空气中弥漫着淡淡的灵气。</p>
+                                            <p>你记起来了——你是太虚剑宗的一名内门弟子，踏上修仙之路已有数年。如今身处练气期三层，距离筑基大道尚有漫漫征途。</p>
+                                            <p>石室之外传来阵阵风声，隐约可闻同门弟子修炼的吐纳之声。新的一天开始了，你打算如何行动？</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 选项区域 -->
+                                <div class="narrative-options" id="narrativeOptions">
+                                    <button class="narr-option" data-action="cultivate">
+                                        <span class="opt-icon">
+                                            <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.3"/><path d="M10 2V8M10 12V18" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                                        </span>
+                                        <span class="opt-text">前往修炼室打坐修炼，吸纳天地灵气</span>
+                                    </button>
+                                    <button class="narr-option" data-action="exploreSect">
+                                        <span class="opt-icon">
+                                            <svg viewBox="0 0 20 20" fill="none"><path d="M10 2L15 8L10 14L5 8Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                                        </span>
+                                        <span class="opt-text">走出石室，在宗门内四处走走</span>
+                                    </button>
+                                    <button class="narr-option" data-action="goMission">
+                                        <span class="opt-icon">
+                                            <svg viewBox="0 0 20 20" fill="none"><path d="M4 14L10 6L16 14" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="10" cy="15" r="1" fill="currentColor"/></svg>
+                                        </span>
+                                        <span class="opt-text">前往任务堂接取宗门任务</span>
+                                    </button>
+                                    <button class="narr-option" data-action="freeInput">
+                                        <span class="opt-icon">
+                                            <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.3"/><path d="M7 10H13M10 7V13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                                        </span>
+                                        <span class="opt-text">自由行动...</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- 叙事输入栏 -->
+                            <div class="narrative-input-bar">
+                                <input type="text" id="narrInput" class="narr-input" placeholder="描述你想做的事情..." aria-label="输入行动">
+                                <button class="narr-send-btn" id="btnNarrSend" aria-label="执行行动">
+                                    <svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 叙事历史侧栏 -->
+                        <aside class="narrative-history" id="narrativeHistory">
+                            <h3 class="history-title">冒险日志</h3>
+                            <div class="history-list" id="historyList">
+                                <div class="history-item active" data-turn="0">
+                                    <span class="hi-turn">序章</span>
+                                    <span class="hi-summary">太虚剑宗·石室苏醒</span>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                </section>
+
                 <!-- 修炼页面 -->
-                <section class="tab-content active" id="tabCultivation" aria-labelledby="navCultivation">
+                <section class="tab-content" id="tabCultivation" aria-labelledby="navCultivation">
                     <div class="cultivation-layout">
                         <div class="cult-main">
                             <div class="cult-vortex" id="cultVortex">
