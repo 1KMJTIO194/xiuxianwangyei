@@ -6,6 +6,186 @@
     'use strict';
 
     /* ================================
+       角色创建系统
+       ================================ */
+    const creationState = {
+        step: 1,
+        origin: null,
+        roots: { 金: 72, 木: 45, 水: 88, 火: 60, 土: 35 },
+        talent: null,
+        completed: false
+    };
+
+    const originData = {
+        noble:     { label: '名门之后',   spi: 1, spc: 0, ss: -1, bs: 0, stones: 500,  stamina: 0,  hp: 0,  atk: 0, rootBonus: 15, items: ['healPill'] },
+        wanderer:  { label: '散修之子',   spi: 0, spc: 1, ss: 0,  bs: 2, stones: 0,    stamina: 10, hp: 0,  atk: 0, rootBonus: 0,  items: [] },
+        martial:   { label: '武道世家',   spi: 0, spc: -1,ss: 0,  bs: 6, stones: 0,    stamina: 0,  hp: 80, atk: 5, rootBonus: 0,  items: [] },
+        scholar:   { label: '书香门第',   spi: 0, spc: 3, ss: 3,  bs: -2,stones: 0,    stamina: 0,  hp: 0,  atk: 0, rootBonus: 10, items: ['jadeSlip'], rootBoost: '水' },
+        chosen:    { label: '天降奇缘',   spi: 2, spc: 0, ss: 1,  bs: 0, stones: -200, stamina: 0,  hp: 0,  atk: 0, rootBonus: 0,  items: ['beastCore'] },
+        orphan:    { label: '山村孤儿',   spi: 0, spc: 0, ss: 2,  bs: 0, stones: -400, stamina: 20, hp: 120,atk:0,  rootBonus: 0,  items: [] }
+    };
+
+    const talentData = {
+        spiritBody:    { label: '灵体共鸣',   effect: '修炼速率 +30%',          apply(p) { p.cultivationRate = Math.round(p.cultivationRate * 1.3); } },
+        swordHeart:    { label: '剑心通明',   effect: '攻击力 +30% · 暴击率 +15%', apply(p) { p.attack = Math.round(p.attack * 1.3); p.critChance = 0.15; } },
+        alchemyMaster: { label: '炼丹奇才',   effect: '丹药效果 ×2',            apply(p) { p.alchemyBonus = 2; } },
+        ironWall:      { label: '金刚不坏',   effect: '伤害减免 25% · 生命上限 +50%', apply(p) { p.maxHp = Math.round(p.maxHp * 1.5); p.hp = p.maxHp; p.dmgReduction = 0.25; } }
+    };
+
+    // DOM refs
+    const DOM_creationOverlay = document.getElementById('creationOverlay');
+    const DOM_stepOrigin = document.getElementById('stepOrigin');
+    const DOM_stepRoots = document.getElementById('stepRoots');
+    const DOM_stepTalent = document.getElementById('stepTalent');
+    const DOM_cpSteps = document.querySelectorAll('.cp-step');
+    const DOM_cpLines = document.querySelectorAll('.cp-line');
+    const DOM_btnToStep2 = document.getElementById('btnToStep2');
+    const DOM_btnToStep3 = document.getElementById('btnToStep3');
+    const DOM_btnFinishCreation = document.getElementById('btnFinishCreation');
+
+    function goToStep(step) {
+        creationState.step = step;
+        [DOM_stepOrigin, DOM_stepRoots, DOM_stepTalent].forEach(s => s.classList.remove('active'));
+        if (step === 1) DOM_stepOrigin.classList.add('active');
+        if (step === 2) DOM_stepRoots.classList.add('active');
+        if (step === 3) DOM_stepTalent.classList.add('active');
+
+        DOM_cpSteps.forEach(s => {
+            const sNum = parseInt(s.dataset.step);
+            s.classList.remove('active', 'done');
+            if (sNum === step) s.classList.add('active');
+            if (sNum < step) s.classList.add('done');
+        });
+        DOM_cpLines.forEach((l, i) => {
+            l.classList.toggle('done', i + 1 < step);
+        });
+    }
+
+    // Step 1: 出身选择
+    document.querySelectorAll('.origin-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.origin-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            creationState.origin = card.dataset.origin;
+            DOM_btnToStep2.disabled = false;
+        });
+    });
+
+    DOM_btnToStep2.addEventListener('click', () => {
+        if (!creationState.origin) return;
+        goToStep(2);
+    });
+
+    // Step 2: 灵根
+    function randomizeRoots() {
+        const elements = ['金', '木', '水', '火', '土'];
+        const roots = {};
+        let total = 0;
+        // Generate 5 random values
+        const raw = elements.map(() => 20 + Math.floor(Math.random() * 80));
+        const rawSum = raw.reduce((a, b) => a + b, 0);
+        elements.forEach((el, i) => {
+            roots[el] = Math.round(raw[i] / rawSum * 300);
+            total += roots[el];
+        });
+        creationState.roots = roots;
+        updateRootsDisplay();
+        return roots;
+    }
+
+    function updateRootsDisplay() {
+        const r = creationState.roots;
+        document.querySelector('#rootMetal .root-val').textContent = r.金;
+        document.querySelector('#rootWood .root-val').textContent = r.木;
+        document.querySelector('#rootWater .root-val').textContent = r.水;
+        document.querySelector('#rootFire .root-val').textContent = r.火;
+        document.querySelector('#rootEarth .root-val').textContent = r.土;
+        document.getElementById('totalRoots').textContent = Object.values(r).reduce((a, b) => a + b, 0);
+        const primary = Object.entries(r).sort((a, b) => b[1] - a[1])[0][0];
+        document.getElementById('primaryRoot').textContent = primary;
+        const bonus = Math.round(Object.values(r).reduce((a, b) => a + b, 0) / 10);
+        document.getElementById('rootBonus').textContent = `+${bonus}%`;
+    }
+
+    document.getElementById('btnRerollRoots').addEventListener('click', randomizeRoots);
+    DOM_btnToStep3.addEventListener('click', () => goToStep(3));
+
+    // Step 3: 天赋
+    document.querySelectorAll('.talent-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.talent-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            creationState.talent = card.dataset.talent;
+            DOM_btnFinishCreation.disabled = false;
+        });
+    });
+
+    // 完成创建
+    DOM_btnFinishCreation.addEventListener('click', () => {
+        if (!creationState.talent) return;
+        applyCharacterCreation();
+    });
+
+    function applyCharacterCreation() {
+        const p = GameState.player;
+        const origin = originData[creationState.origin];
+        const talent = talentData[creationState.talent];
+
+        // Apply origin stats
+        if (origin) {
+            p.SPI = Math.max(1, p.SPI + origin.spi);
+            p.SPC = Math.max(1, p.SPC + origin.spc);
+            p.SS = Math.max(5, p.SS + origin.ss);
+            p.BS = Math.max(5, p.BS + origin.bs);
+            p.spiritStones = Math.max(0, p.spiritStones + origin.stones);
+            p.maxStamina += origin.stamina;
+            p.stamina = p.maxStamina;
+            p.maxHp += origin.hp;
+            p.hp = p.maxHp;
+            p.attack += origin.atk;
+
+            // Apply root bonus
+            if (origin.rootBoost) {
+                creationState.roots[origin.rootBoost] += origin.rootBonus;
+            } else if (origin.rootBonus > 0) {
+                for (const k in creationState.roots) {
+                    creationState.roots[k] += Math.round(origin.rootBonus / 5);
+                }
+            }
+            p.spiritRoots = { ...creationState.roots };
+        }
+
+        // Apply talent
+        if (talent) {
+            p.talent = creationState.talent;
+            talent.apply(p);
+        }
+
+        // Update derived stats
+        p.currentQi = p.SPCap;
+        updatePlayerCombatPower();
+        updateCultivationUI();
+        updateCombatUI();
+
+        creationState.completed = true;
+        DOM_creationOverlay.classList.add('hidden');
+
+        // Welcome notification
+        setTimeout(() => {
+            NotificationSystem.success(
+                '踏入仙途',
+                `你以「${origin.label}」的身份踏上了修仙之路，天赋「${talent.label}」将伴你前行。`,
+                6000
+            );
+        }, 800);
+    }
+
+    // 初始化创建流程
+    if (!creationState.completed) {
+        goToStep(1);
+    }
+
+    /* ================================
        游戏状态 — 完整修炼数值体系
        ================================ */
     const GameState = {

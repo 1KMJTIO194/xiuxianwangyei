@@ -14,6 +14,192 @@
     <!-- 灵气粒子背景 -->
     <canvas id="particleCanvas" aria-hidden="true"></canvas>
 
+    <!-- ====== 角色创建界面 ====== -->
+    <div id="creationOverlay" class="creation-overlay">
+        <div class="creation-container">
+            <!-- 步骤进度 -->
+            <div class="creation-progress" id="creationProgress">
+                <div class="cp-step active" data-step="1"><span class="cp-num">壹</span><span class="cp-label">出身</span></div>
+                <div class="cp-line"></div>
+                <div class="cp-step" data-step="2"><span class="cp-num">贰</span><span class="cp-label">灵根</span></div>
+                <div class="cp-line"></div>
+                <div class="cp-step" data-step="3"><span class="cp-num">叁</span><span class="cp-label">天赋</span></div>
+            </div>
+
+            <!-- Step 1: 出身选择 -->
+            <div class="creation-step active" id="stepOrigin">
+                <h2 class="creation-title">选择你的出身</h2>
+                <p class="creation-subtitle">出身决定了你踏入修仙之路的起点和基础属性</p>
+                <div class="origin-grid" id="originGrid">
+                    <button class="origin-card" data-origin="noble" id="originNoble">
+                        <div class="origin-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><path d="M24 4L28 16H40L30 24L34 36L24 28L14 36L18 24L8 16H20Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                        </div>
+                        <h3>名门之后</h3>
+                        <span class="origin-tag">世家大族</span>
+                        <p class="origin-desc">生于修仙世家，自小丹药不缺，灵根资质上佳。初始灵石充裕，起步优越。</p>
+                        <div class="origin-stats">
+                            <span class="os-item up">灵石 +500</span>
+                            <span class="os-item up">SPI +1</span>
+                            <span class="os-item up">灵根 +15%</span>
+                            <span class="os-item down">SS -1</span>
+                        </div>
+                    </button>
+                    <button class="origin-card" data-origin="wanderer" id="originWanderer">
+                        <div class="origin-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="19" stroke="currentColor" stroke-width="1.5"/><path d="M24 8L24 40M8 24H40" stroke="currentColor" stroke-width="1.5"/><circle cx="24" cy="24" r="6" fill="currentColor" opacity="0.4"/></svg>
+                        </div>
+                        <h3>散修之子</h3>
+                        <span class="origin-tag">自由散人</span>
+                        <p class="origin-desc">父母为散修，从小随行四方，见多识广。各项属性均衡，适应力极强。</p>
+                        <div class="origin-stats">
+                            <span class="os-item up">SPC +1</span>
+                            <span class="os-item up">BS +2</span>
+                            <span class="os-item up">体力 +10</span>
+                            <span class="os-item neutral">均衡发展</span>
+                        </div>
+                    </button>
+                    <button class="origin-card" data-origin="martial" id="originMartial">
+                        <div class="origin-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><path d="M16 6L28 6L28 14L16 14Z" stroke="currentColor" stroke-width="1.5"/><path d="M18 14L14 30L8 36" stroke="currentColor" stroke-width="1.5"/><path d="M26 14L30 30L36 36" stroke="currentColor" stroke-width="1.5"/><path d="M20 18V24" stroke="currentColor" stroke-width="1.2"/></svg>
+                        </div>
+                        <h3>武道世家</h3>
+                        <span class="origin-tag">以武入道</span>
+                        <p class="origin-desc">生于武道世家，自幼锻体淬身，肉身强横。以武入道，肉体强度远超同阶。</p>
+                        <div class="origin-stats">
+                            <span class="os-item up">BS +6</span>
+                            <span class="os-item up">攻击 +5</span>
+                            <span class="os-item up">生命 +80</span>
+                            <span class="os-item down">SPC -1</span>
+                        </div>
+                    </button>
+                    <button class="origin-card" data-origin="scholar" id="originScholar">
+                        <div class="origin-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><rect x="10" y="8" width="28" height="34" rx="3" stroke="currentColor" stroke-width="1.5"/><line x1="16" y1="16" x2="32" y2="16" stroke="currentColor" stroke-width="1"/><line x1="16" y1="22" x2="28" y2="22" stroke="currentColor" stroke-width="1"/></svg>
+                        </div>
+                        <h3>书香门第</h3>
+                        <span class="origin-tag">儒道兼修</span>
+                        <p class="origin-desc">出身书香世家，博闻强识，悟性超群。灵力量虽小，但操控精度极高。</p>
+                        <div class="origin-stats">
+                            <span class="os-item up">SPC +3</span>
+                            <span class="os-item up">SS +3</span>
+                            <span class="os-item up">灵根 水+10%</span>
+                            <span class="os-item down">BS -2</span>
+                        </div>
+                    </button>
+                    <button class="origin-card" data-origin="chosen" id="originChosen">
+                        <div class="origin-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="1.5"/><path d="M24 8L26 16L34 18L26 20L24 28L22 20L14 18L22 16Z" stroke="currentColor" stroke-width="1.2"/></svg>
+                        </div>
+                        <h3>天降奇缘</h3>
+                        <span class="origin-tag">天命之人</span>
+                        <p class="origin-desc">自幼便被一道神秘光芒笼罩，怀揣未知的命运。属性起伏大，机缘难测。</p>
+                        <div class="origin-stats">
+                            <span class="os-item up">SPI +2</span>
+                            <span class="os-item up">随机属性</span>
+                            <span class="os-item up">稀有物品</span>
+                            <span class="os-item down">灵石 -200</span>
+                        </div>
+                    </button>
+                    <button class="origin-card" data-origin="orphan" id="originOrphan">
+                        <div class="origin-icon">
+                            <svg viewBox="0 0 48 48" fill="none"><path d="M14 44C14 30 18 24 24 24C30 24 34 30 34 44" stroke="currentColor" stroke-width="1.5"/><circle cx="24" cy="14" r="8" stroke="currentColor" stroke-width="1.5"/></svg>
+                        </div>
+                        <h3>山村孤儿</h3>
+                        <span class="origin-tag">逆境求生</span>
+                        <p class="origin-desc">生于微末，无依无靠，却凭借顽强的意志踏入仙途。生命力和意志远超常人。</p>
+                        <div class="origin-stats">
+                            <span class="os-item up">体力 +20</span>
+                            <span class="os-item up">生命 +120</span>
+                            <span class="os-item up">SS +2</span>
+                            <span class="os-item down">灵石 -400</span>
+                        </div>
+                    </button>
+                </div>
+                <button class="btn-creation-next" id="btnToStep2" disabled>确认出身，继续</button>
+            </div>
+
+            <!-- Step 2: 灵根资质 -->
+            <div class="creation-step" id="stepRoots">
+                <h2 class="creation-title">灵根资质</h2>
+                <p class="creation-subtitle">五行灵根决定了你与天地灵气的亲和度</p>
+                <div class="roots-display">
+                    <div class="roots-pentagram" id="rootsPentagram">
+                        <svg viewBox="0 0 200 200" fill="none">
+                            <polygon points="100,20 176,76 147,158 53,158 24,76" stroke="currentColor" stroke-width="0.8" opacity="0.2"/>
+                            <line x1="100" y1="20" x2="100" y2="100" stroke="currentColor" stroke-width="0.5" opacity="0.1"/>
+                            <line x1="24" y1="76" x2="100" y2="100" stroke="currentColor" stroke-width="0.5" opacity="0.1"/>
+                            <line x1="53" y1="158" x2="100" y2="100" stroke="currentColor" stroke-width="0.5" opacity="0.1"/>
+                            <line x1="147" y1="158" x2="100" y2="100" stroke="currentColor" stroke-width="0.5" opacity="0.1"/>
+                            <line x1="176" y1="76" x2="100" y2="100" stroke="currentColor" stroke-width="0.5" opacity="0.1"/>
+                        </svg>
+                        <div class="root-point" id="rootMetal" style="top:12%;left:50%"><span>金</span><span class="root-val">72</span></div>
+                        <div class="root-point" id="rootWater" style="top:50%;left:11%"><span>水</span><span class="root-val">88</span></div>
+                        <div class="root-point" id="rootEarth" style="top:82%;left:25%"><span>土</span><span class="root-val">35</span></div>
+                        <div class="root-point" id="rootFire" style="top:82%;left:75%"><span>火</span><span class="root-val">60</span></div>
+                        <div class="root-point" id="rootWood" style="top:50%;left:89%"><span>木</span><span class="root-val">45</span></div>
+                    </div>
+                    <div class="roots-info">
+                        <p>灵根资质影响修炼速度和对应属性功法的威力。水灵根出众者修炼速度更快，金灵根高者攻击更具穿透力。</p>
+                        <div class="roots-summary">
+                            <div class="rs-item"><span>总灵根值</span><span class="rs-val" id="totalRoots">300</span></div>
+                            <div class="rs-item"><span>主灵根</span><span class="rs-val accent" id="primaryRoot">水</span></div>
+                            <div class="rs-item"><span>修炼加成</span><span class="rs-val accent" id="rootBonus">+29%</span></div>
+                        </div>
+                        <button class="btn-secondary btn-sm" id="btnRerollRoots">重新随机</button>
+                    </div>
+                </div>
+                <button class="btn-creation-next" id="btnToStep3">确认灵根，继续</button>
+            </div>
+
+            <!-- Step 3: 特殊天赋 -->
+            <div class="creation-step" id="stepTalent">
+                <h2 class="creation-title">选择特殊天赋</h2>
+                <p class="creation-subtitle">天赋是你在修仙路上独一无二的优势</p>
+                <div class="talent-grid" id="talentGrid">
+                    <button class="talent-card" data-talent="spiritBody" id="talentSpiritBody">
+                        <div class="talent-icon">
+                            <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="1.3"/><path d="M20 4C20 4 24 14 28 18C32 22 36 24 36 24" stroke="currentColor" stroke-width="1.5"/><path d="M20 36C20 36 16 26 12 22C8 18 4 16 4 16" stroke="currentColor" stroke-width="1.5"/></svg>
+                        </div>
+                        <h3>灵体共鸣</h3>
+                        <span class="talent-tag">修炼天赋</span>
+                        <p>天生与灵气高度亲和，修炼效率永久提升30%。</p>
+                        <div class="talent-effect"><span>修炼速率 +30%</span></div>
+                    </button>
+                    <button class="talent-card" data-talent="swordHeart" id="talentSwordHeart">
+                        <div class="talent-icon">
+                            <svg viewBox="0 0 40 40" fill="none"><path d="M14 26L26 14M26 14H18M26 14V22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="1.3"/></svg>
+                        </div>
+                        <h3>剑心通明</h3>
+                        <span class="talent-tag">战斗天赋</span>
+                        <p>天生剑道奇才，战斗中攻击力与暴击率大幅提升。</p>
+                        <div class="talent-effect"><span>攻击力 +30% · 暴击率 +15%</span></div>
+                    </button>
+                    <button class="talent-card" data-talent="alchemyMaster" id="talentAlchemyMaster">
+                        <div class="talent-icon">
+                            <svg viewBox="0 0 40 40" fill="none"><rect x="10" y="4" width="20" height="28" rx="6" stroke="currentColor" stroke-width="1.3"/><circle cx="20" cy="20" r="6" stroke="currentColor" stroke-width="1"/></svg>
+                        </div>
+                        <h3>炼丹奇才</h3>
+                        <span class="talent-tag">辅助天赋</span>
+                        <p>精通炼丹之道，丹药效果翻倍，可使用更高品级的丹方。</p>
+                        <div class="talent-effect"><span>丹药效果 ×2 · 丹方解锁</span></div>
+                    </button>
+                    <button class="talent-card" data-talent="ironWall" id="talentIronWall">
+                        <div class="talent-icon">
+                            <svg viewBox="0 0 40 40" fill="none"><path d="M20 2L32 8V20C32 30 20 36 20 36C20 36 8 30 8 20V8L20 2Z" stroke="currentColor" stroke-width="1.3"/></svg>
+                        </div>
+                        <h3>金刚不坏</h3>
+                        <span class="talent-tag">防御天赋</span>
+                        <p>肉身坚如金石，受到的所有伤害降低25%，生命上限大幅提升。</p>
+                        <div class="talent-effect"><span>伤害减免 25% · 生命上限 +50%</span></div>
+                    </button>
+                </div>
+                <button class="btn-creation-next" id="btnFinishCreation" disabled>确认天赋，踏入仙途</button>
+            </div>
+        </div>
+        <div class="creation-bg-text">太虚之境</div>
+    </div>
+
     <!-- 主容器 -->
     <div id="appContainer">
 
