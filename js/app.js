@@ -859,6 +859,7 @@
         }
         p.stamina -= amount;
         updateCultivationUI();
+        updateStaminaSegments();
 
         // Flash the stamina display
         DOM.staminaDisplay.classList.add('stamina-consume-flash');
@@ -889,6 +890,7 @@
         // Recover stamina
         const recovered = p.staminaPerTurn;
         p.stamina = Math.min(p.maxStamina, p.stamina + recovered);
+        updateStaminaSegments();
 
         // Natural recovery
         p.hp = Math.min(p.maxHp, Math.round(p.hp + p.maxHp * 0.05));
@@ -1862,23 +1864,29 @@
     function addNarrativeEntry(sender, text, className = '') {
         const p = GameState.player;
         const timeStr = `修仙历 ${GameState.year}年${GameState.month}月`;
+        const isSystem = className.includes('system');
 
         const entry = document.createElement('div');
-        entry.className = `narrative-entry ${className}`;
+        entry.className = `story-message ${className}`;
+        entry.style.animationDelay = '0.1s';
         entry.innerHTML = `
-            <div class="narrate-meta">
-                <span class="narrate-label">${sender}</span>
-                <span class="narrate-time">${timeStr}</span>
-            </div>
-            <div class="narrate-body">${text}</div>
+            <div class="story-message-label">${sender} · ${timeStr}</div>
+            <div class="story-message-content">${isSystem ? formatNarrativeText(text) : text}</div>
         `;
         DOM_narrTextWrap.appendChild(entry);
         DOM_narrTextWrap.scrollTop = DOM_narrTextWrap.scrollHeight;
 
-        // Limit scrollback
         while (DOM_narrTextWrap.children.length > 30) {
             DOM_narrTextWrap.firstElementChild.remove();
         }
+    }
+
+    function formatNarrativeText(text) {
+        return text
+            .replace(/《([^》]+)》/g, '<span class="story-skill">《$1》</span>')
+            .replace(/"/g, '')
+            .replace(/“([^”]+)”/g, '<span class="story-dialogue">「$1」</span>')
+            .replace(/\*\*([^*]+)\*\*/g, '<span class="story-thought">$1</span>');
     }
 
     function clearNarrativeOptions() {
@@ -2232,11 +2240,27 @@
     /* ================================
        初始化
        ================================ */
+    // 更新体力分段条
+    function updateStaminaSegments() {
+        const p = GameState.player;
+        const segCount = 10;
+        const activeCount = Math.round((p.stamina / p.maxStamina) * segCount);
+        const segs = document.querySelectorAll('#staminaBarWrap .stamina-seg');
+        segs.forEach((seg, i) => {
+            seg.classList.toggle('active', i < activeCount);
+            seg.classList.toggle('low', p.stamina <= 15 && i < activeCount);
+        });
+    }
+
     function init() {
         ParticleSystem.init();
         updateCultivationUI();
         updateCombatUI();
         setCombatButtonsEnabled(false);
+        updateStaminaSegments();
+
+        // 开场标题动画
+        initOpeningAnimation();
 
         // 若角色创建已完成，展示欢迎通知
         if (creationState.completed) {
@@ -2254,6 +2278,39 @@
     }
 
     init();
+
+    // 开场标题动画
+    function initOpeningAnimation() {
+        setTimeout(() => {
+            document.querySelectorAll('.mountain-far, .mountain-mid, .mountain-near')
+                .forEach(el => el.classList.add('raised'));
+        }, 300);
+
+        setTimeout(() => {
+            const title = document.getElementById('openingTitle');
+            if (title) title.classList.add('show');
+        }, 1800);
+
+        setTimeout(() => {
+            const subtitle = document.getElementById('openingSubtitle');
+            if (subtitle) subtitle.classList.add('show');
+        }, 2400);
+
+        setTimeout(() => {
+            const menu = document.getElementById('titleMenu');
+            if (menu) menu.classList.add('show');
+        }, 3000);
+
+        // "踏入仙途"按钮 → 关闭标题画面，显示角色创建
+        const btnStart = document.getElementById('btnStartGame');
+        if (btnStart) {
+            btnStart.addEventListener('click', () => {
+                const titleScreen = document.getElementById('titleScreen');
+                if (titleScreen) titleScreen.classList.add('hidden');
+                // 角色创建遮罩会自动显示(creationState.completed初始为false)
+            });
+        }
+    }
 
     console.log('%c 太虚之境 %c 修仙世界 ',
         'font-size:1.4em;font-family:"Noto Serif SC",serif;color:#c9a84c;',

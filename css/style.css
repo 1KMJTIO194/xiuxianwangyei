@@ -68,6 +68,182 @@
 }
 
 /* ==============================
+   开场标题画面
+   ============================== */
+.title-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: #060b14;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: opacity 1.2s ease, visibility 1.2s;
+}
+
+.title-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.mountains-container {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 65%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.mountains-container svg {
+    width: 100%; height: 100%;
+}
+
+.mountain-far {
+    opacity: 0;
+    transform: translateY(40px);
+}
+.mountain-mid {
+    opacity: 0;
+    transform: translateY(30px);
+}
+.mountain-near {
+    opacity: 0;
+    transform: translateY(20px);
+}
+.mountain-far.raised {
+    animation: mountainRise 2.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.mountain-mid.raised {
+    animation: mountainRise 2s cubic-bezier(0.22, 1, 0.36, 1) 0.4s forwards;
+}
+.mountain-near.raised {
+    animation: mountainRise 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.8s forwards;
+}
+@keyframes mountainRise {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.mountain-mist {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 30%;
+    background: linear-gradient(to top, rgba(6,11,20,0.9) 0%, transparent 100%);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.opening-title {
+    position: relative;
+    z-index: 3;
+    font-family: var(--font-heading);
+    font-size: 80px;
+    letter-spacing: 20px;
+    color: var(--gold-light);
+    text-shadow: 0 0 40px rgba(200,160,80,0.3), 0 2px 4px rgba(0,0,0,0.5);
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.opening-title.show {
+    animation: titleReveal 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes titleReveal {
+    0% { opacity: 0; transform: scale(0.95); filter: blur(8px); }
+    50% { opacity: 0.8; transform: scale(1.01); filter: blur(1px); }
+    100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+.opening-subtitle {
+    position: relative;
+    z-index: 3;
+    font-family: var(--font-body);
+    font-size: 16px;
+    letter-spacing: 10px;
+    color: var(--jade);
+    opacity: 0;
+    margin-top: 20px;
+    font-weight: 300;
+}
+
+.opening-subtitle.show {
+    animation: subtitleFadeIn 1.4s ease 0.5s forwards;
+}
+
+@keyframes subtitleFadeIn {
+    from { opacity: 0; transform: translateY(8px); letter-spacing: 14px; }
+    to { opacity: 0.7; transform: translateY(0); letter-spacing: 10px; }
+}
+
+.title-menu {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    gap: 16px;
+    margin-top: 60px;
+    opacity: 0;
+}
+
+.title-menu.show {
+    animation: menuFadeIn 0.8s ease forwards;
+}
+
+@keyframes menuFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.title-btn {
+    width: 220px;
+    padding: 14px 0;
+    background: transparent;
+    border: 1px solid rgba(200,160,80,0.25);
+    border-radius: 2px;
+    color: rgba(230,220,200,0.8);
+    font-family: var(--font-heading);
+    font-size: 16px;
+    letter-spacing: 6px;
+    cursor: pointer;
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.title-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: rgba(200,160,80,0.08);
+    transition: left 0.4s ease;
+}
+
+.title-btn:hover::before {
+    left: 0;
+}
+
+.title-btn:hover {
+    border-color: rgba(200,160,80,0.5);
+    color: var(--gold-light);
+}
+
+.title-btn.primary {
+    border-color: rgba(200,160,80,0.6);
+    color: var(--gold-light);
+    font-weight: 500;
+    background: rgba(200,160,80,0.08);
+}
+
+.title-btn.primary:hover {
+    border-color: var(--gold);
+    background: rgba(200,160,80,0.15);
+}
+
+/* ==============================
    角色创建界面
    ============================== */
 .creation-overlay {
@@ -982,6 +1158,106 @@ body {
 .player-narrate .narrate-body {
     color: var(--text-primary);
     font-style: italic;
+}
+
+/* 叙事消息块（参考宗门志设计） */
+.story-message {
+    position: relative;
+    margin-bottom: 20px;
+    padding: 16px;
+    border-radius: 8px;
+    background: rgba(10, 18, 30, 0.4);
+    border: 1px solid var(--border-subtle);
+    animation: msgFadeIn 0.5s ease forwards;
+    opacity: 0;
+}
+
+.story-message.system-narrate {
+    border-left: 3px solid var(--jade);
+}
+
+.story-message.player-narrate {
+    border-left: 3px solid var(--gold);
+    margin-left: 24px;
+}
+
+@keyframes msgFadeIn {
+    to { opacity: 1; }
+}
+
+.story-message-label {
+    font-size: 11px;
+    margin-bottom: 8px;
+    opacity: 0.7;
+    letter-spacing: 2px;
+}
+
+.story-message.system-narrate .story-message-label {
+    color: var(--jade);
+}
+
+.story-message.player-narrate .story-message-label {
+    color: var(--gold);
+}
+
+.story-paragraph {
+    margin-bottom: 14px;
+    text-indent: 2em;
+    animation: msgFadeIn 0.5s ease forwards;
+    opacity: 0;
+    line-height: 1.9;
+}
+
+.story-paragraph.narrator {
+    text-indent: 0;
+    color: var(--gold-light);
+    font-weight: 500;
+}
+
+.story-dialogue {
+    color: #f0d87a;
+    font-weight: 500;
+}
+
+.story-thought {
+    color: var(--jade);
+    font-style: italic;
+    opacity: 0.92;
+}
+
+.story-skill {
+    color: #d8a0c0;
+    font-weight: 600;
+}
+
+/* 体力条升级 */
+.stamina-bar-wrap {
+    display: flex;
+    gap: 2px;
+}
+
+.stamina-seg {
+    width: 10px;
+    height: 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,107,107,0.3);
+    border-radius: 2px;
+    transition: all 0.3s;
+}
+
+.stamina-seg.active {
+    background: linear-gradient(180deg, #d44a3a, #e86050);
+    border-color: #d44a3a;
+}
+
+.stamina-seg.low {
+    background: linear-gradient(180deg, #d44a3a, #e86050);
+    animation: segPulse 1s ease-in-out infinite;
+}
+
+@keyframes segPulse {
+    0%, 100% { border-color: rgba(255,107,107,0.3); }
+    50% { border-color: rgba(255,107,107,0.8); }
 }
 
 /* 选项区域 */
@@ -3651,6 +3927,24 @@ body {
     .notification {
         min-width: 260px;
         max-width: calc(100vw - 48px);
+    }
+}
+
+    .opening-title {
+        font-size: 48px;
+        letter-spacing: 12px;
+    }
+
+    .opening-subtitle {
+        font-size: 13px;
+        letter-spacing: 5px;
+    }
+
+    .title-btn {
+        width: 180px;
+        padding: 12px 0;
+        font-size: 14px;
+        letter-spacing: 4px;
     }
 }
 

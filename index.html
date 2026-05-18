@@ -11,6 +11,26 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <!-- ====== 开场标题画面 ====== -->
+    <div id="titleScreen" class="title-screen">
+        <div class="mountains-container">
+            <svg viewBox="-200 0 2800 1080" preserveAspectRatio="none">
+                <path class="mountain-far" fill="rgba(10,18,30,0.7)"
+                    d="M-100,1080 L-100,650 Q200,400 450,550 T950,480 T1450,520 T1950,450 T2400,500 V1080 Z"/>
+                <path class="mountain-mid" fill="rgba(14,25,45,0.8)"
+                    d="M-100,1080 L-100,750 Q250,580 500,720 T1000,650 T1500,720 T2000,680 V1080 Z"/>
+                <path class="mountain-near" fill="rgba(6,11,20,0.95)"
+                    d="M-100,1080 L-100,860 Q300,740 600,890 T1100,800 T1600,870 V1080 Z"/>
+            </svg>
+            <div class="mountain-mist"></div>
+        </div>
+        <div class="opening-title" id="openingTitle">太虚之境</div>
+        <div class="opening-subtitle" id="openingSubtitle">问道长生 · 修仙世界 · 你的道由你书写</div>
+        <div class="title-menu" id="titleMenu">
+            <button class="title-btn primary" id="btnStartGame">踏入仙途</button>
+        </div>
+    </div>
+
     <!-- 灵气粒子背景 -->
     <canvas id="particleCanvas" aria-hidden="true"></canvas>
 
@@ -243,7 +263,18 @@
                     </div>
                     <div class="status-item stamina-display" id="staminaDisplay" title="体力">
                         <svg class="status-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 2 6 6 6 12C6 18 12 22 12 22C12 22 18 18 18 12C18 6 12 2 12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-                        <span class="status-value" id="staminaValue">100</span>
+                        <div class="stamina-bar-wrap" id="staminaBarWrap">
+                            <div class="stamina-seg active"></div>
+                            <div class="stamina-seg active"></div>
+                            <div class="stamina-seg active"></div>
+                            <div class="stamina-seg active"></div>
+                            <div class="stamina-seg active"></div>
+                            <div class="stamina-seg active"></div>
+                            <div class="stamina-seg active"></div>
+                            <div class="stamina-seg active"></div>
+                            <div class="stamina-seg active"></div>
+                            <div class="stamina-seg active"></div>
+                        </div>
                         <span class="status-label">体力</span>
                     </div>
                     <button class="topbar-btn btn-next-turn" id="btnNextTurn" title="下一回合" aria-label="进入下一回合">
