@@ -1042,6 +1042,11 @@ body {
 
 .opt-icon svg { width: 16px; height: 16px; }
 
+.opt-text {
+    flex: 1;
+    line-height: 1.5;
+}
+
 /* 叙事输入栏 */
 .narrative-input-bar {
     display: flex;
@@ -1571,6 +1576,13 @@ body {
     font-family: var(--font-heading);
     font-size: 1rem;
     font-weight: 600;
+}
+
+.combatant-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
 }
 
 .combatant-realm {
@@ -2997,6 +3009,15 @@ body {
 
 .msg-text {
     color: var(--text-secondary);
+}
+
+.system-msg .msg-sender {
+    color: var(--gold);
+}
+
+.system-msg .msg-text {
+    color: var(--text-secondary);
+    font-style: italic;
 }
 
 .llm-toggle {

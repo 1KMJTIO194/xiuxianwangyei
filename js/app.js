@@ -161,11 +161,26 @@
             talent.apply(p);
         }
 
+        // Set player name based on origin
+        const originNames = {
+            noble: '云逸', wanderer: '风尘', martial: '铁骨',
+            scholar: '文渊', chosen: '天命', orphan: '石坚'
+        };
+        p.name = originNames[creationState.origin] || '无名修士';
+
+        // Apply initial equipment bonus
+        if (equippedItems.weapon && equipStatBonuses[equippedItems.weapon]) {
+            applyEquipBonus(equippedItems.weapon);
+        }
+
         // Update derived stats
         p.currentQi = p.SPCap;
         updatePlayerCombatPower();
         updateCultivationUI();
         updateCombatUI();
+
+        // Update initial narrative with origin story
+        updateInitialNarrative(origin, talent);
 
         creationState.completed = true;
 
@@ -190,6 +205,23 @@
                 6000
             );
         }, 800);
+    }
+
+    function updateInitialNarrative(origin, talent) {
+        const p = GameState.player;
+        const narrEntry = document.getElementById('narrativeEntry');
+        if (!narrEntry) return;
+
+        const originStories = {
+            noble: `<p>你叫${p.name}，出身修仙世家。自小便在家族的丹药与功法中成长，灵石不缺，灵根上佳。如今以炼气期三层的修为进入太虚剑宗，家族的期望与自身的骄傲交织在胸。</p><p>石室中的夜明珠散发幽幽光芒。身为名门之后，你比旁人更清楚——修仙之路，光有资源远远不够。</p><p>新的一天开始了，你打算如何迈出修仙之路的第一步？</p>`,
+            wanderer: `<p>你叫${p.name}，自幼随散修父母行走四方。见惯了修仙界的弱肉强食，也练就了灵活应变的本领。如今落脚太虚剑宗，成为内门弟子。</p><p>石室外是陌生的环境，但你早已习惯了漂泊。体内灵力和肉身力量均衡发展，适应力极强。</p><p>新的一天开始了，你打算如何开始你的修仙之路？</p>`,
+            martial: `<p>你叫${p.name}，出身武道世家。自幼淬炼肉身，筋骨之强横远超同阶修士。如今以武入道，拜入太虚剑宗修行。</p><p>石室中的灵气对你而言尚有些陌生，但你那经历过千锤百炼的肉身充满了力量。以武入道，前途不可限量。</p><p>新的一天开始了，你打算如何以武道之基踏上仙途？</p>`,
+            scholar: `<p>你叫${p.name}，出身书香门第。自幼便展现出惊人的悟性，对天地之道的理解远超常人。如今以儒入道，拜入太虚剑宗。</p><p>你的灵魂强度远超同阶，对灵力的精微操控令人叹服。虽然肉身稍弱，但智慧才是你最强大的武器。</p><p>新的一天开始了，你打算如何以智慧指引修仙之路？</p>`,
+            chosen: `<p>你叫${p.name}，自出生便被一道神秘光芒所笼罩。无人知晓这道光芒的来历，但你从小便知道自己与众不同。怀揣着一枚偶然获得的妖兽内丹，你踏入了太虚剑宗。</p><p>你的命运似乎被某种无形的力量牵引着。石室中的灵气对你有一种天然的亲近感。</p><p>新的一天开始了，你的命运之轮将转向何方？</p>`,
+            orphan: `<p>你叫${p.name}，生于微末，无依无靠。但顽强的意志让你从山村中走出，凭借一股不屈的韧劲踏入了太虚剑宗。虽然灵石匮乏，但你的生命力和意志远超常人。</p><p>石室虽简陋，却比你曾经住过的任何地方都要好。你知道——在这修仙世界中，唯有靠自己的双手才能闯出一片天地。</p><p>新的一天开始了，你打算如何以逆境之姿踏上仙途？</p>`
+        };
+
+        narrEntry.querySelector('.narrate-body').innerHTML = originStories[creationState.origin] || originStories.wanderer;
     }
 
     // 初始化创建流程
@@ -945,12 +977,20 @@
 
         if (p.hp <= 0 || e.hp <= 0) return;
 
-        const dmg = getCombatDamage(p, e, skillMultiplier);
-        e.hp = Math.max(0, e.hp - dmg);
+        // 暴击判定（剑心通明天赋 +15%暴击率）
+        const critChance = p.critChance || 0;
+        const isCrit = Math.random() < critChance;
+        const finalMult = isCrit ? skillMultiplier * 2.0 : skillMultiplier;
+
+        const dmg = getCombatDamage(p, e, finalMult);
+        // 金刚不坏天赋：伤害减免
+        const reduction = p.dmgReduction || 0;
+        const finalDmg = Math.round(dmg * (1 - reduction));
+        e.hp = Math.max(0, e.hp - finalDmg);
         updateCombatUI();
 
-        const critText = dmg > getCombatDamage(p, e, skillMultiplier) * 1.3 ? ' — 会心一击！' : '';
-        addCombatLog(`你使出 <span style="color:${skillColor || 'var(--spirit)'}">${skillName}</span>，造成 <span class="highlight">${dmg}</span> 点伤害${critText}`, 'player-action');
+        const critText = isCrit ? ' <span style="color:var(--gold-light)">— 会心一击！</span>' : '';
+        addCombatLog(`你使出 <span style="color:${skillColor || 'var(--spirit)'}">${skillName}</span>，造成 <span class="highlight">${finalDmg}</span> 点伤害${critText}`, 'player-action');
 
         if (e.hp <= 0) {
             endCombat(true);
@@ -1311,6 +1351,41 @@
         treasure: null
     };
 
+    // 装备属性加成映射
+    const equipStatBonuses = {
+        ironSword:  { atk: 18, def: 0, hp: 0, spi: 1, spc: 0, ss: 0, bs: 0 },
+        cloudBoots: { atk: 0, def: 3, hp: 0, spi: 0, spc: 1, ss: 0, bs: 2 },
+        jadeBelt:   { atk: 0, def: 5, hp: 40, spi: 0, spc: 0, ss: 1, bs: 0 }
+    };
+
+    function applyEquipBonus(itemKey) {
+        const p = GameState.player;
+        const bonus = equipStatBonuses[itemKey];
+        if (!bonus) return;
+        p.attack += bonus.atk;
+        p.defense += bonus.def;
+        p.maxHp += bonus.hp;
+        p.hp = Math.min(p.hp + bonus.hp, p.maxHp);
+        p.SPI += bonus.spi;
+        p.SPC += bonus.spc;
+        p.SS += bonus.ss;
+        p.BS += bonus.bs;
+    }
+
+    function removeEquipBonus(itemKey) {
+        const p = GameState.player;
+        const bonus = equipStatBonuses[itemKey];
+        if (!bonus) return;
+        p.attack -= bonus.atk;
+        p.defense -= bonus.def;
+        p.maxHp -= bonus.hp;
+        p.hp = Math.min(p.hp, p.maxHp);
+        p.SPI -= bonus.spi;
+        p.SPC -= bonus.spc;
+        p.SS -= bonus.ss;
+        p.BS -= bonus.bs;
+    }
+
     // 物品数量追踪
     const inventoryQuantities = {
         ironSword: 1,
@@ -1517,13 +1592,19 @@
             const nameEl = slotEl.querySelector('.pd-slot-name');
             if (nameEl) { nameEl.textContent = '空'; nameEl.classList.add('empty-slot'); }
             DOM_btnEquipItem.textContent = '装备';
-            if (oldKey) increaseItemQuantity(oldKey);
-            NotificationSystem.info('已卸下', `${data.name} 已放回储物袋。`);
+            if (oldKey) {
+                removeEquipBonus(oldKey);
+                increaseItemQuantity(oldKey);
+            }
+            updatePlayerCombatPower();
+            updateCultivationUI();
+            NotificationSystem.info('已卸下', `${data.name} 已放回储物袋，属性加成已移除。`);
         } else {
             // 若该槽位已有装备，先卸下旧装备
             const oldKey = equippedItems[data.slot];
             if (oldKey) {
                 equippedItems[data.slot] = null;
+                removeEquipBonus(oldKey);
                 increaseItemQuantity(oldKey);
             }
             // 装备新物品 — 从物品栏扣除
@@ -1532,8 +1613,11 @@
             const nameEl = slotEl.querySelector('.pd-slot-name');
             if (nameEl) { nameEl.textContent = data.name; nameEl.classList.remove('empty-slot'); }
             DOM_btnEquipItem.textContent = '卸下';
+            applyEquipBonus(selectedItemKey);
             decreaseItemQuantity(selectedItemKey);
-            NotificationSystem.success('装备成功', `已装备 ${data.name} 到${slotEl.querySelector('.pd-slot-label')?.textContent || '装备栏'}。`);
+            updatePlayerCombatPower();
+            updateCultivationUI();
+            NotificationSystem.success('装备成功', `已装备 ${data.name}，属性加成已生效。`);
         }
     });
 
@@ -1549,22 +1633,26 @@
         }
 
         const p = GameState.player;
+        const alchMult = p.alchemyBonus || 1;  // 炼丹奇才天赋：效果翻倍
         let used = false;
         if (selectedItemKey === 'healPill') {
-            p.hp = Math.min(p.maxHp, p.hp + 200);
-            p.currentQi = Math.min(p.SPCap, p.currentQi + 100);
+            const healHp = Math.round(200 * alchMult);
+            const healQi = Math.round(100 * alchMult);
+            p.hp = Math.min(p.maxHp, p.hp + healHp);
+            p.currentQi = Math.min(p.SPCap, p.currentQi + healQi);
             updateCultivationUI();
-            NotificationSystem.success('使用回灵丹', '生命 +200，灵力 +100');
+            NotificationSystem.success('使用回灵丹', `生命 +${healHp}，灵力 +${healQi}${alchMult > 1 ? '（炼丹奇才效果翻倍）' : ''}`);
             used = true;
         } else if (selectedItemKey === 'foundationPill') {
             NotificationSystem.info('筑基丹', '此丹药应在突破时使用，当前使用无效。');
         } else if (selectedItemKey === 'qiPill') {
-            p.cultivationRate += 6;
+            const rateBoost = Math.round(6 * alchMult);
+            p.cultivationRate += rateBoost;
             updateCultivationUI();
-            NotificationSystem.success('使用聚灵丹', '修炼效率 +50%，持续2回合！');
+            NotificationSystem.success('使用聚灵丹', `修炼效率 +${Math.round(rateBoost / 2.5 * 50)}%，持续2回合！${alchMult > 1 ? '（炼丹奇才效果翻倍）' : ''}`);
             used = true;
             setTimeout(() => {
-                p.cultivationRate -= 6;
+                p.cultivationRate -= rateBoost;
                 updateCultivationUI();
                 NotificationSystem.info('聚灵丹失效', '修炼效率恢复至正常水平。');
             }, 60000);
@@ -1857,15 +1945,18 @@
         const lower = input.toLowerCase();
         const responses = [];
 
+        const p = GameState.player;
         if (lower.includes('修炼') || lower.includes('打坐') || action === 'cultivate') {
             responses.push({
-                raw: `<thinking>玩家选择修炼，这是提升修为的主要方式。</thinking>
-<maintext>你盘膝而坐，双手结印，运转太虚吐纳术。随着呼吸的律动，周围的天地灵气如同溪流般涌入你的经脉，在丹田中凝练成纯净的灵力。
+                raw: `<thinking>玩家选择修炼，这是提升修为的主要方式。当前修炼进度${p.cultivationProgress}%。</thinking>
+<maintext>${p.name}盘膝而坐，双手结印，运转太虚吐纳术。随着呼吸的律动，周围的天地灵气如同溪流般涌入经脉，在丹田中凝练成纯净的灵力。
 
-修炼的过程枯燥却充实。你感受到体内的灵力正在缓缓增长，每一缕灵气的融入都让你的修为更加稳固。石室中的夜明珠散发着柔和的光芒，你的心神完全沉浸在修炼之中。</maintext>
+修炼的过程枯燥却充实。你感受到体内的灵力正在缓缓增长，每一缕灵气的融入都让修为更加稳固。石室中的夜明珠散发着柔和的光芒，心神完全沉浸在修炼之中。
+
+当前修炼进度 ${p.cultivationProgress}%，SPI ${p.SPI} · SPC ${p.SPC} · SPCap ${p.SPCap}</maintext>
 <option>继续修炼，冲击更高层次</option>
 <option>停下修炼，去坊市购买丹药辅助</option>
-<option>去战斗，以实战检验修为</option>
+<option>去演武场，以实战检验修为</option>
 <option>自由行动...</option>
 <sum>潜心修炼</sum>`,
                 defaultOptions: ['继续修炼', '去坊市看看', '寻找妖兽战斗', '自由行动...']

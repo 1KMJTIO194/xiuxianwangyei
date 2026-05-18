@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd D:\\\\xiuxianwangyeiyouxi; $html = Get-Content index.html -Raw; $css = Get-Content css/style.css -Raw; $js = Get-Content js/app.js -Raw; Write-Output \"HTML: $\\($html.Length\\) chars, $\\(\\([regex]::Matches\\($html, '<section'\\)\\).Count\\) sections\"; Write-Output \"CSS: $\\($css.Length\\) chars, $\\(\\($css -split \"`n\"\\).Count\\) lines\"; Write-Output \"JS: $\\($js.Length\\) chars, $\\(\\($js -split \"`n\"\\).Count\\) lines\")",
+      "PowerShell($js = Get-Content \"D:\\\\xiuxianwangyeiyouxi\\\\js\\\\app.js\" -Raw; $html = Get-Content \"D:\\\\xiuxianwangyeiyouxi\\\\index.html\" -Raw; $ids = [regex]::Matches\\($js, \"getElementById\\\\\\('\\([^']+\\)'\\\\\\)\"\\) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique; foreach \\($id in $ids\\) { if \\($html -notmatch \"id=`\"$id`\"\"\\) { Write-Output \"MISSING: $id\" } })"
+    ]
+  }
+}
