@@ -168,7 +168,19 @@
         updateCombatUI();
 
         creationState.completed = true;
+
+        // 先隐藏遮罩，动画结束后移除节点
         DOM_creationOverlay.classList.add('hidden');
+        DOM_creationOverlay.addEventListener('transitionend', () => {
+            DOM_creationOverlay.style.display = 'none';
+        }, { once: true });
+        // 兜底：600ms 后强制移除
+        setTimeout(() => {
+            DOM_creationOverlay.style.display = 'none';
+        }, 650);
+
+        // 切换到探索页作为默认首页
+        switchTab('explore');
 
         // Welcome notification
         setTimeout(() => {
@@ -196,7 +208,7 @@
             name: '无名修士',
             realm: '炼气期',
             realmTier: 3,
-            realmIndex: 0,
+            realmIndex: 1,
             lifespan: 150,
 
             // === 核心灵力三维 ===
@@ -2110,14 +2122,16 @@
         updateCombatUI();
         setCombatButtonsEnabled(false);
 
-        // Show welcome notification
-        setTimeout(() => {
-            NotificationSystem.info(
-                '欢迎来到太虚之境',
-                '你是一名初入道途的修士。开始修炼，探索这片充满灵气的修仙世界吧。',
-                5000
-            );
-        }, 800);
+        // 若角色创建已完成，展示欢迎通知
+        if (creationState.completed) {
+            setTimeout(() => {
+                NotificationSystem.info(
+                    '欢迎回到太虚之境',
+                    '继续你的修仙之旅，探索这片充满灵气的世界吧。',
+                    4000
+                );
+            }, 1000);
+        }
 
         // Periodic update for UI
         setInterval(updateCultivationUI, 5000);
