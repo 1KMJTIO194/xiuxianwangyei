@@ -184,27 +184,52 @@
 
         creationState.completed = true;
 
-        // 先隐藏遮罩，动画结束后移除节点
+        // 隐藏遮罩，动画结束后移除节点
         DOM_creationOverlay.classList.add('hidden');
         DOM_creationOverlay.addEventListener('transitionend', () => {
             DOM_creationOverlay.style.display = 'none';
+            // 遮罩移除后确保探索页为默认首页
+            ensureExploreTabActive();
         }, { once: true });
-        // 兜底：600ms 后强制移除
+        // 兜底：650ms 后强制移除并切换页面
         setTimeout(() => {
-            DOM_creationOverlay.style.display = 'none';
+            if (DOM_creationOverlay.style.display !== 'none') {
+                DOM_creationOverlay.style.display = 'none';
+            }
+            ensureExploreTabActive();
         }, 650);
 
-        // 切换到探索页作为默认首页
-        switchTab('explore');
-
-        // Welcome notification
+        // Welcome notification 稍晚弹出
         setTimeout(() => {
             NotificationSystem.success(
                 '踏入仙途',
                 `你以「${origin.label}」的身份踏上了修仙之路，天赋「${talent.label}」将伴你前行。`,
                 6000
             );
-        }, 800);
+        }, 1000);
+    }
+
+    function ensureExploreTabActive() {
+        // 强制设置探索页为激活页
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(ni => {
+            ni.classList.remove('active');
+            ni.removeAttribute('aria-current');
+        });
+
+        const exploreTab = document.getElementById('tabExplore');
+        const exploreNav = document.getElementById('navExplore');
+
+        if (exploreTab) exploreTab.classList.add('active');
+        if (exploreNav) {
+            exploreNav.classList.add('active');
+            exploreNav.setAttribute('aria-current', 'page');
+        }
+
+        // 更新粒子背景
+        if (ParticleSystem && typeof ParticleSystem.resize === 'function') {
+            ParticleSystem.resize();
+        }
     }
 
     function updateInitialNarrative(origin, talent) {
